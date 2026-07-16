@@ -1,0 +1,600 @@
+{
+  "routes": [
+    {
+      "id": "paris-montmartre",
+      "title": "파리 몽마르트르 & 중심지",
+      "title_en": "Paris — Montmartre & Downtown",
+      "country": "France",
+      "countryFlag": "🇫🇷",
+      "stops": [
+        {
+          "id": 1,
+          "name_ko": "몽마르트르",
+          "name_en": "Montmartre",
+          "description": "파리의 언덕 위에서 예술가들의 자유로운 영혼과 도시의 낭만이 가장 농축되어 숨 쉬는 곳",
+          "country": "France",
+          "city": "Paris",
+          "type": "산봉우리",
+          "rating": 4.7,
+          "coordinates": [
+            2.3431,
+            48.8867
+          ]
+        },
+        {
+          "id": 2,
+          "name_ko": "사크레쾨르 대성당",
+          "name_en": "Sacré-Cœur Basilica",
+          "description": "파리 전경을 내려다보며 순백의 돔으로 신앙과 평화를 상징하는 몽마르트르의 정점",
+          "country": "France",
+          "city": "Paris",
+          "type": "바실리카",
+          "rating": 4.7,
+          "coordinates": [
+            2.3428,
+            48.8867
+          ]
+        },
+        {
+          "id": 3,
+          "name_ko": "테르트르 광장",
+          "name_en": "Place du Tertre",
+          "description": "고흐·고갱 등 근대 미술을 연 화가들이 어깨를 맞대고 활동했던, 몽마르트르 예술 정신의 심장부",
+          "country": "France",
+          "city": "Paris",
+          "type": "대광장",
+          "rating": 4.5,
+          "coordinates": [
+            2.3407,
+            48.8867
+          ]
+        },
+        {
+          "id": 4,
+          "name_ko": "물랭 루주",
+          "name_en": "Moulin Rouge",
+          "description": "파리의 밤이 가장 화려하고 대담하게 춤추는, 몽마르트르의 상징적인 카바레",
+          "country": "France",
+          "city": "Paris",
+          "type": "극장",
+          "rating": 4.4,
+          "coordinates": [
+            2.3322,
+            48.8841
+          ]
+        },
+        {
+          "id": 5,
+          "name_ko": "르 바토 라부아르",
+          "name_en": "Le Bateau-Lavoir",
+          "description": "피카소를 비롯한 20세기 초 전위 예술가들이 가난과 열정 속에서 혁명을 준비하던 몽마르트르의 전설적인 작업실",
+          "country": "France",
+          "city": "Paris",
+          "type": "역사적 장소",
+          "rating": 4.6,
+          "coordinates": [
+            2.3402,
+            48.8862
+          ]
+        },
+        {
+          "id": 6,
+          "name_ko": "사랑해 벽",
+          "name_en": "Le Mur des Je t'aime",
+          "description": "300여 개 언어로 적힌 '사랑해'가 파리의 낭만과 보편적인 사랑을 하나로 모아 놓은 몽마르트르의 고백",
+          "country": "France",
+          "city": "Paris",
+          "type": "랜드마크",
+          "rating": 4.3,
+          "coordinates": [
+            2.3412,
+            48.8866
+          ]
+        },
+        {
+          "id": 7,
+          "name_ko": "생장 드 몽마르트르 교회",
+          "name_en": "Église Saint-Jean de Montmartre",
+          "description": "아르누보 양식으로 지어진, 신앙과 현대성이 만나는 몽마르트르의 조용한 보석 같은 교회",
+          "country": "France",
+          "city": "Paris",
+          "type": "천주교 성당",
+          "rating": 4.6,
+          "coordinates": [
+            2.3384,
+            48.8858
+          ]
+        },
+        {
+          "id": 8,
+          "name_ko": "에투알 개선문",
+          "name_en": "Arc de Triomphe",
+          "description": "파리의 중심에서 역사·영광·도시의 축을 한눈에 상징하는 프랑스의 위대한 문",
+          "country": "France",
+          "city": "Paris",
+          "type": "기념비",
+          "rating": 4.7,
+          "coordinates": [
+            2.295,
+            48.8738
+          ]
+        },
+        {
+          "id": 9,
+          "name_ko": "샹젤리제 거리",
+          "name_en": "Avenue des Champs-Élysées",
+          "description": "에투알 개선문에서 콩코르드 광장까지 이어지는, 파리의 화려함·권력·낭만이 모두 집약된 상징적 대로",
+          "country": "France",
+          "city": "Paris",
+          "type": "대로",
+          "rating": 4.7,
+          "coordinates": [
+            2.3076,
+            48.8698
+          ]
+        },
+        {
+          "id": 10,
+          "name_ko": "루브르 박물관",
+          "name_en": "Louvre Museum",
+          "description": "왕궁에서 세계 최대의 미술관으로 변모해 인류의 예술과 역사를 품은 파리의 심장",
+          "country": "France",
+          "city": "Paris",
+          "type": "미술관",
+          "rating": 4.7,
+          "coordinates": [
+            2.3376,
+            48.8606
+          ]
+        },
+        {
+          "id": 11,
+          "name_ko": "에펠탑",
+          "name_en": "Eiffel Tower",
+          "description": "근대의 기술로 빚어 올린 철의 구조물이 파리의 낭만을 하늘 위에 새긴 영원한 상징",
+          "country": "France",
+          "city": "Paris",
+          "type": "역사적 명소",
+          "rating": 4.7,
+          "coordinates": [
+            2.2945,
+            48.8584
+          ]
+        },
+        {
+          "id": 12,
+          "name_ko": "해방 광장",
+          "name_en": "Place de la Libération",
+          "description": "해방의 기억을 이름에 새기고, 일상의 파리와 역사가 조용히 교차하는 소박한 광장",
+          "country": "France",
+          "city": "Paris",
+          "type": "광장",
+          "rating": 4.4,
+          "coordinates": [
+            2.287,
+            48.858
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dijon-switzerland",
+      "title": "디종 & 스위스 알프스",
+      "title_en": "Dijon & Swiss Alps",
+      "country": "France · Switzerland",
+      "countryFlag": "🇫🇷🇨🇭",
+      "stops": [
+        {
+          "id": 13,
+          "name_ko": "노트르담 드 디종",
+          "name_en": "Church of Our Lady",
+          "description": "디종의 노트르담 - 부르고뉴 고딕의 절제된 아름다움과 중세 디종의 신앙을 간직한 상징적인 교회",
+          "country": "France",
+          "city": "Dijon",
+          "type": "천주교 성당",
+          "rating": 4.6,
+          "coordinates": [
+            5.0415,
+            47.322
+          ]
+        },
+        {
+          "id": 14,
+          "name_ko": "인터라켄 오스트역",
+          "name_en": "Interlaken Ost",
+          "description": "융프라우 지역으로 향하는 관문으로, 알프스의 대자연과 여행이 본격적으로 시작되는 설렘의 출발점",
+          "country": "Switzerland",
+          "city": "Interlaken",
+          "type": "대중교통 이용장소",
+          "rating": 4.5,
+          "coordinates": [
+            7.87,
+            46.693
+          ]
+        },
+        {
+          "id": 15,
+          "name_ko": "융프라우 산",
+          "name_en": "Jungfrau",
+          "description": "알프스의 설산 위에 장엄함과 순수가 공존하며, 유럽의 지붕이라 불리는 절대적인 자연의 상징",
+          "country": "Switzerland",
+          "city": "Jungfrau",
+          "type": "산봉우리",
+          "rating": 4.7,
+          "coordinates": [
+            7.9629,
+            46.5366
+          ]
+        },
+        {
+          "id": 16,
+          "name_ko": "빈사의 사자상",
+          "name_en": "Lion Monument",
+          "description": "루체른 호숫가의 바위에 새겨진, 조국을 위해 쓰러진 병사들의 비극과 충성을 침묵으로 애도하는 조각",
+          "country": "Switzerland",
+          "city": "Lucerne",
+          "type": "역사적 명소",
+          "rating": 4.5,
+          "coordinates": [
+            8.3106,
+            47.057
+          ]
+        },
+        {
+          "id": 17,
+          "name_ko": "카펠교",
+          "name_en": "Chapel Bridge",
+          "description": "적의 침입을 막기 위해 설계된 방어용 다리로, 좌우의 벽 길이가 서로 다르다는 독특한 구조를 지닌 루체른의 상징",
+          "country": "Switzerland",
+          "city": "Lucerne",
+          "type": "다리",
+          "rating": 4.7,
+          "coordinates": [
+            8.3068,
+            47.0505
+          ]
+        }
+      ]
+    },
+    {
+      "id": "italy-grand-tour",
+      "title": "이탈리아 그랜드 투어",
+      "title_en": "Italy Grand Tour",
+      "country": "Italy",
+      "countryFlag": "🇮🇹",
+      "stops": [
+        {
+          "id": 18,
+          "name_ko": "단테 거리",
+          "name_en": "Via Dante",
+          "description": "밀라노에서 스포르체스코 성으로 이어지며, 역사와 현대의 일상이 자연스럽게 교차하는 상징적인 거리",
+          "country": "Italy",
+          "city": "Milan",
+          "type": "거리",
+          "rating": 4.6,
+          "coordinates": [
+            9.1832,
+            45.4657
+          ]
+        },
+        {
+          "id": 19,
+          "name_ko": "밀라노 대성당",
+          "name_en": "Milan Cathedral",
+          "description": "하얀 대리석 첨탑들이 하늘을 찌르듯 솟아오른, 고딕 예술의 극점이자 밀라노의 신앙과 야망을 상징하는 대성전",
+          "country": "Italy",
+          "city": "Milan",
+          "type": "천주교 성당",
+          "rating": 4.8,
+          "coordinates": [
+            9.19,
+            45.4642
+          ]
+        },
+        {
+          "id": 20,
+          "name_ko": "스타벅스 리저브 로스터리 밀라노",
+          "name_en": "Starbucks Reserve Roastery Milan",
+          "description": "역사적인 우체국 건물 안에서 커피를 하나의 공연처럼 경험하게 하는, 전통과 현대가 교차하는 공간",
+          "country": "Italy",
+          "city": "Milan",
+          "type": "커피숍",
+          "rating": 4.4,
+          "coordinates": [
+            9.187,
+            45.461
+          ]
+        },
+        {
+          "id": 21,
+          "name_ko": "스칼라 광장",
+          "name_en": "Piazza della Scala",
+          "description": "라 스칼라 극장을 품고 예술·금융·도시의 품격이 만나는, 밀라노의 가장 우아한 광장",
+          "country": "Italy",
+          "city": "Milan",
+          "type": "관광 명소",
+          "rating": 4.6,
+          "coordinates": [
+            9.1896,
+            45.4674
+          ]
+        },
+        {
+          "id": 22,
+          "name_ko": "비토리오 에마누엘레 2세 갤러리아",
+          "name_en": "Galleria Vittorio Emanuele II",
+          "description": "19세기 유리 돔 아래에서 쇼핑과 예술, 도시의 사교 문화가 함께 흐르는 밀라노의 거실",
+          "country": "Italy",
+          "city": "Milan",
+          "type": "쇼핑몰",
+          "rating": 4.7,
+          "coordinates": [
+            9.19,
+            45.4656
+          ]
+        },
+        {
+          "id": 23,
+          "name_ko": "산타 트리니타 다리",
+          "name_en": "Ponte Santa Trinita",
+          "description": "우아한 타원형 아치로 아르노 강을 가로지르며, 르네상스 피렌체의 균형과 미감을 가장 아름답게 보여주는 다리",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "다리",
+          "rating": 4.6,
+          "coordinates": [
+            11.2486,
+            43.7695
+          ]
+        },
+        {
+          "id": 24,
+          "name_ko": "베키오 다리",
+          "name_en": "Ponte Vecchio",
+          "description": "중세의 상점들이 다리 위에 이어지며, 시간·상업·사랑이 함께 흐르는 피렌체의 살아 있는 역사",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "다리",
+          "rating": 4.7,
+          "coordinates": [
+            11.2531,
+            43.768
+          ]
+        },
+        {
+          "id": 25,
+          "name_ko": "시뇨리아 광장",
+          "name_en": "Piazza della Signoria",
+          "description": "권력과 예술, 시민의 역사가 한 공간에 응축된 피렌체 공화국의 심장",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "대광장",
+          "rating": 4.8,
+          "coordinates": [
+            11.2558,
+            43.7696
+          ]
+        },
+        {
+          "id": 26,
+          "name_ko": "마키아벨리 동상",
+          "name_en": "Statue of Niccolò Machiavelli",
+          "description": "피렌체 시뇨리아 광장에 있는 니콜로 마키아벨리 동상",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "조각",
+          "rating": 4.8,
+          "coordinates": [
+            11.2559,
+            43.7697
+          ]
+        },
+        {
+          "id": 27,
+          "name_ko": "조토의 종탑",
+          "name_en": "Giotto's Campanile",
+          "description": "조토의 설계로 시작된 정교한 대리석 탑으로, 피렌체 대성당 옆에서 르네상스 이전 예술의 완벽한 균형미를 보여주는 상징",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "관광 명소",
+          "rating": 4.8,
+          "coordinates": [
+            11.256,
+            43.7731
+          ]
+        },
+        {
+          "id": 28,
+          "name_ko": "두오모 광장",
+          "name_en": "Piazza del Duomo",
+          "description": "피렌체 대성당과 조토의 종탑, 세례당이 한눈에 펼쳐지며 도시의 신앙과 예술이 가장 장엄하게 드러나는 중심 무대",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "대광장",
+          "rating": 4.8,
+          "coordinates": [
+            11.2561,
+            43.7731
+          ]
+        },
+        {
+          "id": 29,
+          "name_ko": "피렌체 대성당",
+          "name_en": "Florence Cathedral",
+          "description": "브루넬레스키의 거대한 돔으로 중세와 르네상스를 잇고, 도시의 신앙·기술·예술을 한 몸에 드러낸 상징",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "대성당",
+          "rating": 4.8,
+          "coordinates": [
+            11.2559,
+            43.7731
+          ]
+        },
+        {
+          "id": 30,
+          "name_ko": "미켈란젤로 광장",
+          "name_en": "Piazzale Michelangelo",
+          "description": "피렌체 전경과 두오모의 붉은 돔을 한눈에 담을 수 있는, 도시를 가장 아름답게 내려다보는 전망의 무대",
+          "country": "Italy",
+          "city": "Florence",
+          "type": "대광장",
+          "rating": 4.8,
+          "coordinates": [
+            11.265,
+            43.7629
+          ]
+        },
+        {
+          "id": 31,
+          "name_ko": "캄포 광장",
+          "name_en": "Piazza del Campo",
+          "description": "조개껍질 모양의 독특한 광장에서 중세 시에나의 시민 정신과 열정적인 팔리오 경주가 살아 숨 쉬는 공간",
+          "country": "Italy",
+          "city": "Siena",
+          "type": "대광장",
+          "rating": 4.8,
+          "coordinates": [
+            11.3306,
+            43.3186
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rome-vatican",
+      "title": "로마 & 바티칸",
+      "title_en": "Rome & Vatican",
+      "country": "Italy",
+      "countryFlag": "🇮🇹",
+      "stops": [
+        {
+          "id": 32,
+          "name_ko": "바티칸 미술관",
+          "name_en": "Vatican Museums",
+          "description": "교황의 수집으로 시작해 시스티나 성당에 이르기까지, 서양 미술과 신앙의 정수가 집대성된 세계적인 보고",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "미술관",
+          "rating": 4.6,
+          "coordinates": [
+            12.4536,
+            41.9065
+          ]
+        },
+        {
+          "id": 33,
+          "name_ko": "시스티나 성당",
+          "name_en": "Sistine Chapel",
+          "description": "미켈란젤로의 천장화와 최후의 심판이 인류의 창조와 구원을 장엄하게 펼쳐 보이는 신앙과 예술의 극점",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "천주교 성당",
+          "rating": 4.7,
+          "coordinates": [
+            12.4545,
+            41.9029
+          ]
+        },
+        {
+          "id": 34,
+          "name_ko": "성 베드로 대성당",
+          "name_en": "St. Peter's Basilica",
+          "description": "사도 베드로의 무덤 위에 세워진, 가톨릭 신앙과 르네상스·바로크 예술이 정점에 이른 거대한 성전",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "바실리카",
+          "rating": 4.8,
+          "coordinates": [
+            12.4539,
+            41.9022
+          ]
+        },
+        {
+          "id": 35,
+          "name_ko": "나보나 광장",
+          "name_en": "Piazza Navona",
+          "description": "고대 경기장의 흔적 위에 바로크 분수와 예술이 어우러져, 로마의 활기와 낭만이 가장 생생하게 흐르는 광장",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "대광장",
+          "rating": 4.7,
+          "coordinates": [
+            12.4731,
+            41.8992
+          ]
+        },
+        {
+          "id": 36,
+          "name_ko": "판테온",
+          "name_en": "Pantheon",
+          "description": "고대 로마의 신들을 위해 세워졌고 라파엘로의 무덤을 품은, 시간·신앙·예술이 하나로 만나는 불멸의 돔 건축",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "역사적 명소",
+          "rating": 4.8,
+          "coordinates": [
+            12.4769,
+            41.8986
+          ]
+        },
+        {
+          "id": 37,
+          "name_ko": "스페인 계단",
+          "name_en": "Spanish Steps",
+          "description": "로마의 하늘로 이어지는 듯한 계단 위에서 예술·사교·도시의 낭만이 자연스럽게 흐르는 상징적인 공간",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "기념비",
+          "rating": 4.6,
+          "coordinates": [
+            12.4823,
+            41.9059
+          ]
+        },
+        {
+          "id": 38,
+          "name_ko": "트레비 분수",
+          "name_en": "Trevi Fountain",
+          "description": "동전을 던지며 소원을 비는 전통 속에서, 바로크 예술과 로마의 낭만이 가장 화려하게 넘쳐흐르는 분수",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "분수",
+          "rating": 4.7,
+          "coordinates": [
+            12.4833,
+            41.9009
+          ]
+        },
+        {
+          "id": 39,
+          "name_ko": "포로 로마노",
+          "name_en": "Roman Forum",
+          "description": "고대 로마의 정치·종교·일상이 집중되었던 폐허의 광장으로, 제국의 심장이 지금도 숨 쉬는 역사 현장",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "야외 박물관",
+          "rating": 4.8,
+          "coordinates": [
+            12.4853,
+            41.8925
+          ]
+        },
+        {
+          "id": 40,
+          "name_ko": "콜로세움",
+          "name_en": "Colosseum",
+          "description": "고대 로마의 위대함을 상징하는 원형 경기장",
+          "country": "Italy",
+          "city": "Rome",
+          "type": "역사적 명소",
+          "rating": 4.8,
+          "coordinates": [
+            12.4922,
+            41.8902
+          ]
+        }
+      ]
+    }
+  ]
+}
