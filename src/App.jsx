@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Moon, Sun } from "lucide-react";
 import { GameScreen } from "./components/GameScreen";
-import { HomeScreen, GAME_TYPES } from "./components/HomeScreen";
+import { HomeScreen } from "./components/HomeScreen";
 import { ResultScreen } from "./components/ResultScreen";
 import { useTravelData } from "./hooks/useTravelData";
 import { useGameStore } from "./store/useGameStore";
+import { GAME_TYPES } from "./lib/gameTypes";
 import {
   buildGeoModel,
   getFreeRideStops,
@@ -21,6 +22,13 @@ import {
 
 const TIMED_MS = 30000;
 const ARRIVAL_POPUP_MS = 1200;
+
+// 숨겨진 입력창에 항상 보이지 않는 문자(zero-width space) 하나를 심어둔다.
+// 이유: 입력창이 완전히 비어 있을 때는 일부 모바일 가상 키보드가 백스페이스를
+// 눌러도 아예 input 이벤트를 발생시키지 않는다("지울 게 없으니 이벤트 없음").
+// 항상 지울 게 하나 있게 만들어두면, 시드 문자가 사라졌다는 사실 자체로
+// "사용자가 백스페이스를 눌렀다"는 걸 안정적으로 감지할 수 있다.
+const INPUT_SEED = "\u200B";
 
 export default function App() {
   const { data, topology, error } = useTravelData();
@@ -65,9 +73,16 @@ export default function App() {
     document.body.classList.toggle("dark", dark);
   }, [dark]);
 
+  // 컴포넌트가 사라질 때 예약된 도착 팝업 타이머가 남아있으면 정리한다.
+  // (예전에는 backToHome/advanceStop을 거치지 않고 앱 자체가 언마운트되는
+  // 드문 경로에서 setTimeout이 살아남을 수 있었다.)
+  useEffect(() => {
+    return () => clearTimeout(arrivalTimerRef.current);
+  }, []);
+
   const resetTypingInput = useCallback(() => {
     isComposingRef.current = false;
-    if (typingInputRef.current) typingInputRef.current.value = "";
+    if (typingInputRef.current) typingInputRef.current.value = INPUT_SEED;
     setGameState({ compositionText: "" });
   }, [setGameState]);
 
@@ -83,16 +98,16 @@ export default function App() {
   const startGame = useCallback(() => {
     const stops = buildRunStops();
     if (!stops.length) return;
-    
+
     resetGameState();
     setGameState({ runStops: stops });
     resetTypingInput();
-    
+
     gameActiveRef.current = true;
     typingInputRef.current?.focus({ preventScroll: true });
     typedIndexRef.current = 0;
     stopIndexRef.current = 0;
-    
+
     startTimeRef.current = performance.now();
     setScreen("game");
   }, [buildRunStops, resetGameState, setGameState, resetTypingInput, setScreen]);
@@ -129,9 +144,17 @@ export default function App() {
     if (screen === "game" && timerMode === "timed" && elapsedMs >= TIMED_MS) finishGame();
   }, [elapsedMs, finishGame, screen, timerMode]);
 
+  // 게임 화면인데 runStops가 비어있으면(코스를 못 찾았거나 데이터 문제) 무한정
+  // 빈 화면을 보여주는 대신 홈으로 돌려보낸다.
+  useEffect(() => {
+    if (screen === "game" && data && geoModel && runStops.length === 0) {
+      setScreen("home");
+    }
+  }, [screen, data, geoModel, runStops, setScreen]);
+
   const advanceStop = useCallback(() => {
     const currentIndex = stopIndexRef.current;
-    
+
     setGameState({ completed: completed + 1 });
     clearTimeout(arrivalTimerRef.current);
     setGameState({ arrivalStop: null });
@@ -146,6 +169,21 @@ export default function App() {
     setGameState({ stopIndex: nextIndex, typedIndex: 0 });
   }, [finishGame, runStops, completed, setGameState]);
 
+  // 방금 입력한 글자를 한 글자 되돌린다. 도착 연출(도착 팝업이 뜨고 다음
+  // 정류장으로 넘어가기 직전) 중에는 이미 "도착 확정"된 상태라 되돌리지 않는다.
+  const deleteCharacter = useCallback(() => {
+    if (!gameActiveRef.current) return;
+    if (arrivalStop) return;
+    if (typedIndexRef.current <= 0) return;
+
+    typedIndexRef.current -= 1;
+    setGameState({
+      typedIndex: typedIndexRef.current,
+      correct: Math.max(0, useGameStore.getState().correct - 1),
+      combo: 0,
+    });
+  }, [arrivalStop, setGameState]);
+
   const typeCharacter = useCallback(
     (character) => {
       if (!gameActiveRef.current || [...character].length !== 1) return;
@@ -154,19 +192,19 @@ export default function App() {
       const target = getTypingTarget(stop, typingLanguage);
       const targetCharacters = [...target];
       const expected = targetCharacters[typedIndexRef.current];
-      
+
       if (isTypingCharacterMatch(character, expected, typingLanguage)) {
         typedIndexRef.current += 1;
-        
+
         const newCombo = combo + 1;
         const newMaxCombo = Math.max(maxCombo, newCombo);
-        
-        setGameState({ 
+
+        setGameState({
           correct: correct + 1,
           combo: newCombo,
           maxCombo: newMaxCombo
         });
-        
+
         if (typedIndexRef.current >= targetCharacters.length) {
           setGameState({ typedIndex: typedIndexRef.current });
           const arrived = runStops[stopIndexRef.current];
@@ -177,10 +215,10 @@ export default function App() {
           setGameState({ typedIndex: typedIndexRef.current });
         }
       } else {
-        setGameState({ 
-          errors: errors + 1, 
+        setGameState({
+          errors: errors + 1,
           shake: false,
-          combo: 0 
+          combo: 0
         });
         requestAnimationFrame(() => setGameState({ shake: true }));
         setTimeout(() => setGameState({ shake: false }), 170);
@@ -191,19 +229,30 @@ export default function App() {
 
   const consumeTypingInput = useCallback(
     (input) => {
-      const value = input.value;
-      if (!value) return;
-      input.value = "";
+      const raw = input.value;
+
+      // 시드 문자가 사라졌다는 건 백스페이스가 눌렸다는 뜻이다.
+      if (!raw.startsWith(INPUT_SEED)) {
+        input.value = INPUT_SEED;
+        setGameState({ compositionText: "" });
+        deleteCharacter();
+        return;
+      }
+
+      const value = raw.slice(INPUT_SEED.length);
+      input.value = INPUT_SEED;
       setGameState({ compositionText: "" });
+      if (!value) return;
       for (const character of normalizeCommittedText(value, typingLanguage)) typeCharacter(character);
     },
-    [typeCharacter, typingLanguage, setGameState],
+    [typeCharacter, deleteCharacter, typingLanguage, setGameState],
   );
 
   const handleTypingInput = useCallback(
     (event) => {
       if (isComposingRef.current || event.nativeEvent.isComposing) {
-        setGameState({ compositionText: event.currentTarget.value });
+        const raw = event.currentTarget.value;
+        setGameState({ compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw });
         return;
       }
       consumeTypingInput(event.currentTarget);
@@ -213,7 +262,8 @@ export default function App() {
 
   const handleCompositionStart = useCallback((event) => {
     isComposingRef.current = true;
-    setGameState({ compositionText: event.currentTarget.value });
+    const raw = event.currentTarget.value;
+    setGameState({ compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw });
   }, [setGameState]);
 
   const handleCompositionUpdate = useCallback((event) => {
@@ -236,8 +286,20 @@ export default function App() {
         if (screen === "game") backToHome();
         return;
       }
+      if (screen !== "game") return;
+
+      if (event.key === "Backspace") {
+        // 입력창이 포커스되어 있으면(게임 중 대부분의 경우) 브라우저가 시드
+        // 문자를 지우면서 발생시키는 input 이벤트 쪽(consumeTypingInput)이
+        // 이미 처리한다. 여기서 또 처리하면 한 번의 백스페이스가 두 글자를
+        // 지우는 버그가 생긴다.
+        if (event.target === typingInputRef.current) return;
+        event.preventDefault();
+        deleteCharacter();
+        return;
+      }
+
       if (
-        screen !== "game" ||
         event.target === typingInputRef.current ||
         event.repeat ||
         event.metaKey ||
@@ -251,7 +313,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [backToHome, screen, typeCharacter]);
+  }, [backToHome, deleteCharacter, screen, typeCharacter]);
 
   const currentTarget = runStops[stopIndex] ? getTypingTarget(runStops[stopIndex], typingLanguage) : "";
 
@@ -261,6 +323,7 @@ export default function App() {
         ref={typingInputRef}
         className="mobile-typing-input"
         type="text"
+        defaultValue={INPUT_SEED}
         inputMode="text"
         lang={typingLanguage === TYPING_LANGUAGES.KOREAN ? "ko" : "en"}
         autoCapitalize="none"

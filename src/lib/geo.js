@@ -67,9 +67,20 @@ export function getGrandTourStops(routes) {
   return withTravelModes(routes.flatMap((route) => route.stops));
 }
 
+// sort(() => Math.random() - 0.5)는 편향된(진짜 균등분포가 아닌) 셔플이라
+// 특정 항목이 앞/뒤로 쏠리는 경향이 있다. Fisher-Yates로 교체.
+function shuffle(array) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function getFreeRideStops(routes, count = 12) {
   const all = routes.flatMap((route) => route.stops);
-  const shuffled = [...all].sort(() => Math.random() - 0.5).slice(0, count);
+  const shuffled = shuffle(all).slice(0, count);
   return withTravelModes(shuffled);
 }
 

@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Shuffle, ChevronRight, Map, Star, Award, Settings2, Play, MapPin, Plane, Moon, Sun } from "lucide-react";
-import { TYPING_LANGUAGES } from "../lib/typing";
 import { useGameStore } from "../store/useGameStore";
+import { GAME_TYPES } from "../lib/gameTypes";
 
-const GAME_TYPES = {
-  ROUTE: "route",
-  GRAND_TOUR: "grand-tour",
-  FREE_RIDE: "free-ride",
-};
-
+// 하위 호환: 기존에 App.jsx 등에서 `import { GAME_TYPES } from "./components/HomeScreen"`로
+// 가져다 쓰던 코드가 계속 동작하도록 재수출한다. 실제 정의는 lib/gameTypes.js에 있다
+// (여기 두면 useGameStore.js ↔ HomeScreen.jsx 순환 참조가 생김).
 export { GAME_TYPES };
 
 const COUNTRY_COLORS = {
@@ -69,12 +66,10 @@ export function HomeScreen({
 
   const handleDifficultySelect = (level) => {
     setDifficulty(level);
+    // useGameStore.setDifficulty가 typingLanguage까지 함께 세팅해준다.
+    // (여기서 onTypingLanguageChange를 또 호출하면 같은 로직이 두 곳에 중복되어
+    // 나중에 store 쪽 규칙이 바뀌었을 때 여기만 안 바뀌는 식으로 어긋나기 쉽다.)
     setStoreDifficulty(level);
-    if (level === "beginner" || level === "intermediate") {
-      onTypingLanguageChange(TYPING_LANGUAGES.KOREAN);
-    } else {
-      onTypingLanguageChange(TYPING_LANGUAGES.ENGLISH);
-    }
   };
 
   const canStart = gameType !== GAME_TYPES.ROUTE || Boolean(selectedRouteId);

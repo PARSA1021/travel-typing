@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb } from "lucide-reac
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { TRAVEL_MODES } from "../lib/geo";
+import { getCountryAccentClass } from "../lib/countryTheme";
 import { useGameStore } from "../store/useGameStore";
 
 export function GameScreen({
@@ -30,6 +31,7 @@ export function GameScreen({
   const journeyProgress = targetCharacters.length ? typedIndex / targetCharacters.length : 0;
   const isKorean = typingLanguage === "ko";
   const upcomingMode = next?.mode;
+  const countryClass = getCountryAccentClass(stop.country);
 
   // 글자 수에 비례해 자동으로 줄어들되, 너무 작아지거나 너무 커지지 않도록
   // 상/하한을 둔다. (기존 calc(400px / n)은 글자 수가 아주 많거나 적을 때
@@ -42,7 +44,7 @@ export function GameScreen({
     : `${stop.name_ko}, 영문 지명 ${stop.name_en}을 입력하세요`;
 
   return (
-    <section className={`game-screen-fullscreen ${shake ? "error-flash" : ""}`} onClick={onFocusTyping}>
+    <section className={`game-screen-fullscreen ${countryClass} ${shake ? "error-flash" : ""}`} onClick={onFocusTyping}>
       <p className="screen-reader-status" aria-live="polite" aria-atomic="true">
         현재 위치 {typingInstruction}
       </p>
@@ -94,10 +96,16 @@ export function GameScreen({
             <span className="timer-label">{mode === "timed" ? "남은 시간" : "운행 시간"}</span>
             <span className="timer-value">{mode === "timed" ? remaining : elapsed}</span>
           </div>
-          <div className="transport-badge">
-            {upcomingMode === TRAVEL_MODES.PLANE ? <Plane size={14} aria-hidden="true" /> : <Bus size={14} aria-hidden="true" />}
-            <span>{upcomingMode === TRAVEL_MODES.PLANE ? "국가 이동 (비행기)" : "시내 이동 (버스)"}</span>
-          </div>
+          {next ? (
+            <div className="transport-badge">
+              {upcomingMode === TRAVEL_MODES.PLANE ? <Plane size={14} aria-hidden="true" /> : <Bus size={14} aria-hidden="true" />}
+              <span>{upcomingMode === TRAVEL_MODES.PLANE ? "국가 이동 (비행기)" : "시내 이동 (버스)"}</span>
+            </div>
+          ) : (
+            <div className="transport-badge is-final">
+              <span>🏁 마지막 목적지</span>
+            </div>
+          )}
         </div>
 
         <div className="bottom-pill-container">
@@ -120,6 +128,7 @@ export function GameScreen({
             <div
               className={`typing-target-modern ${isKorean ? "is-korean" : ""}`}
               style={{ "--fit-font": fitFontSize }}
+              title="백스페이스로 되돌릴 수 있어요"
             >
               {targetCharacters.map((character, index) => {
                 const isHidden = difficulty === "advanced" && index > 0 && index >= typedIndex && character !== " ";

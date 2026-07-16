@@ -626,54 +626,6 @@ footer {
 }
 
 /* ---------- game screen ---------- */
-.game {
-  position: relative;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
-  gap: 12px;
-  background: var(--paper);
-}
-
-.game-chrome {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  z-index: 5;
-}
-
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.back-button kbd {
-  font-family: "DM Mono", monospace;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 10px;
-}
-
-.route-pill {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
 /* Map rendering */
 .travel-map {
   width: 100%;
@@ -828,18 +780,32 @@ footer {
   }
 }
 
-.stop-stamp circle {
-  fill: none;
-  stroke: #10B981;
+/* ---------- Country accent theme ----------
+   현재 머무르고 있는 나라에 따라 하단 타이핑 알약(bottom-pill-container),
+   입력 중인 글자 색, 도착 토스트의 색이 함께 바뀐다.
+   HomeScreen의 COUNTRY_COLORS 그라디언트와 같은 팔레트를 사용해 통일감을 준다. */
+.game-screen-fullscreen.country-france {
+  --country-accent: #3B82F6;
+  --country-accent-dark: #2563EB;
+  --country-accent-glow: rgba(59, 130, 246, 0.28);
 }
 
-.stop-stamp circle:first-child {
-  stroke-width: 1.4;
-  stroke-dasharray: 2.4 2.6;
+.game-screen-fullscreen.country-switzerland {
+  --country-accent: #10B981;
+  --country-accent-dark: #059669;
+  --country-accent-glow: rgba(16, 185, 129, 0.28);
 }
 
-.stop-stamp circle:last-child {
-  stroke-width: 1;
+.game-screen-fullscreen.country-italy {
+  --country-accent: #EF4444;
+  --country-accent-dark: #DC2626;
+  --country-accent-glow: rgba(239, 68, 68, 0.28);
+}
+
+.game-screen-fullscreen.country-default {
+  --country-accent: var(--teal);
+  --country-accent-dark: #059669;
+  --country-accent-glow: rgba(16, 185, 129, 0.28);
 }
 
 /* ---------- GameScreen Fullscreen UI ---------- */
@@ -899,17 +865,17 @@ footer {
 
 .arrival-toast {
   background: var(--card);
-  border: 2px solid #10B981;
+  border: 2px solid var(--country-accent, #10B981);
   border-radius: 999px;
   padding: 8px 24px 8px 8px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 10px 25px var(--country-accent-glow, rgba(16, 185, 129, 0.2));
 }
 
 .toast-icon {
-  background: #10B981;
+  background: var(--country-accent, #10B981);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -924,7 +890,7 @@ footer {
 
 .toast-subtitle {
   font-size: 11px;
-  color: #10B981;
+  color: var(--country-accent, #10B981);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -1099,20 +1065,25 @@ footer {
 }
 
 .transport-badge {
-  color: var(--teal);
+  color: var(--country-accent, var(--teal));
+}
+
+.transport-badge.is-final {
+  color: #F59E0B;
+  font-weight: 800;
 }
 
 .bottom-pill-container {
-  background: var(--teal);
+  background: var(--country-accent, var(--teal));
   border-radius: 999px;
   width: 100%;
   display: flex;
   align-items: stretch;
   padding: 8px;
-  box-shadow: 0 20px 40px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 20px 40px var(--country-accent-glow, rgba(16, 185, 129, 0.25));
   position: relative;
   z-index: 2;
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, background 0.4s ease, box-shadow 0.4s ease;
 }
 
 .floating-bottom-ui.shake .bottom-pill-container {
@@ -1203,7 +1174,9 @@ footer {
 
 .typing-target-modern {
   font-family: "DM Mono", monospace;
-  font-size: clamp(24px, var(--fit-font, 36px), 48px);
+  /* GameScreen이 --fit-font에 이미 완성된 clamp() 식을 내려준다
+     (예: clamp(1.4rem, 24.50px, 4.5rem)) */
+  font-size: var(--fit-font, clamp(24px, 36px, 48px));
   font-weight: 700;
   letter-spacing: 0.02em;
   margin: 8px 0;
@@ -1216,6 +1189,7 @@ footer {
 }
 
 .typing-target-modern span {
+  display: inline-block;
   color: #D1D5DB;
   transition: color 0.1s;
 }
@@ -1224,9 +1198,30 @@ footer {
   color: var(--teal);
 }
 
+/* GameScreen이 typed 글자에 "particle-pop" 클래스를 붙이는데, 지금까지
+   매칭되는 CSS가 하나도 없어서 아무 효과 없이 조용히 무시되고 있었다. */
+.typing-target-modern span.particle-pop {
+  animation: particle-pop 0.22s ease-out;
+}
+
+@keyframes particle-pop {
+  0% {
+    transform: scale(1.3);
+  }
+
+  60% {
+    transform: scale(0.92);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 .typing-target-modern span.current {
-  color: var(--ink);
-  border-bottom: 3px solid var(--teal);
+  color: var(--country-accent, var(--ink));
+  border-bottom: 3px solid var(--country-accent, var(--teal));
+  transition: color 0.1s, border-color 0.4s ease;
 }
 
 .typing-target-modern span.current.is-space {
@@ -1249,7 +1244,7 @@ footer {
 }
 
 .typing-now {
-  color: var(--teal);
+  color: var(--country-accent, var(--teal));
 }
 
 .composition-modern strong {
@@ -1335,78 +1330,6 @@ footer {
   fill: var(--ink);
 }
 
-.vehicle-body {
-  fill: var(--card);
-  stroke: var(--teal);
-  stroke-width: 2;
-}
-
-.vehicle-window {
-  fill: var(--teal);
-}
-
-.map-vehicle.is-flight .vehicle-body {
-  stroke: var(--coral);
-}
-
-.map-vehicle.is-flight .vehicle-window {
-  fill: var(--coral);
-}
-
-/* Remove old Arrival Overlay since we haven't touched it much, keep basic */
-.arrival-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-
-.arrival-overlay.is-visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.arrival-album-card {
-  background: var(--card);
-  padding: 32px;
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  transform: translateY(20px) scale(0.95);
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.arrival-overlay.is-visible .arrival-album-card {
-  transform: translateY(0) scale(1);
-}
-
-.photo-emoji {
-  font-size: 80px;
-  margin-bottom: 16px;
-  display: inline-block;
-}
-
-.arrival-title {
-  font-size: 32px;
-  font-weight: 900;
-  margin: 0 0 8px;
-}
-
-.arrival-desc {
-  font-size: 15px;
-  color: var(--muted);
-  max-width: 300px;
-  margin: 0 auto;
-  line-height: 1.5;
-}
-
 /* ---------- result screen ---------- */
 .result {
   max-width: 660px;
@@ -1482,6 +1405,12 @@ footer {
   font-weight: 700;
 }
 
+.arrival-toast-container.is-entering { animation: toast-in .2s ease-out; }
+.arrival-toast-container.is-leaving { animation: toast-out .25s ease-in forwards; }
+@keyframes toast-in { from { opacity:0; transform:translateY(8px) scale(.95);} to {opacity:1; transform:none;} }
+@keyframes toast-out { to { opacity:0; transform:translateY(-6px) scale(.95);} }
+.result-grid { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
+
 /* Dark mode glass overrides */
 body.dark .header-left,
 body.dark .header-center,
@@ -1508,7 +1437,7 @@ body.dark .typing-target-modern span.typed {
 
 body.dark .typing-target-modern span.current {
   color: #F9FAFB;
-  border-bottom-color: #10B981;
+  border-bottom-color: var(--country-accent, #10B981);
 }
 
 body.dark .stop-label {
@@ -1608,6 +1537,6 @@ body.dark .route-line {
   }
 
   .typing-target-modern {
-    font-size: clamp(18px, var(--fit-font, 28px), 36px) !important;
+    font-size: clamp(18px, var(--fit-font, 28px), 34px) !important;
   }
 }
