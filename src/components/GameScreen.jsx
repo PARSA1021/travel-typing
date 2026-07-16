@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb } from "lucide-reac
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { TRAVEL_MODES } from "../lib/geo";
-import { getCountryAccentClass } from "../lib/countryTheme";
+import { getCountryAccentClass } from "../lib/Countrytheme";
 import { useGameStore } from "../store/useGameStore";
 
 export function GameScreen({
