@@ -99,7 +99,7 @@ export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake 
   const next = nextIndex === null ? null : stops[nextIndex];
 
   // Zoom camera to current segment instead of whole country
-  const targetBox = getStopsViewBox([current, next].filter(Boolean), 120, 360);
+  const targetBox = getStopsViewBox([current, next].filter(Boolean), 90, 260);
   const viewBox = useSmoothViewBox(targetBox).join(" ");
   const isFlight = next?.mode === TRAVEL_MODES.PLANE;
   const bow = next ? flowBow(next.mode, stopIndex) : 0;

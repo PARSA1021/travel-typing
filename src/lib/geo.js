@@ -73,11 +73,90 @@ export function getFreeRideStops(routes, count = 12) {
   return withTravelModes(shuffled);
 }
 
+// Stops inside the same city sit only 0-2 map units apart once projected
+// (a few real-world meters against a map that spans France/Switzerland/
+// Italy), while a cross-border hop can be 100+ units. Left as-is, the camera
+// and vehicle both read those short intra-city hops as "no movement" - only
+// the big country-crossing flights look like they're going anywhere. This
+// walks the route in order and, whenever a stop lands too close to the one
+// before it, pushes it out to MIN_STOP_SEPARATION along the same direction
+// (or a deterministic fan-out angle if the coordinates are effectively
+// identical). Legs that are already far apart are left untouched, so real
+// city-to-city and country-to-country distances still read as bigger jumps.
+const MIN_STOP_SEPARATION = 100;
+
+function spreadClusteredPoints(stops, minDistance) {
+  // A running "heading" carries the direction of travel from one synthetic
+  // hop to the next. Picking each hop's angle independently (from tiny,
+  // noisy real coordinates, or a big fixed jump for identical ones) made
+  // consecutive stops swing back toward each other - it reads as the
+  // vehicle bouncing in place rather than going somewhere. Instead, each
+  // step nudges the heading gently toward the true direction (when there is
+  // one) and otherwise keeps curving the same way it was already curving,
+  // so the path always flows forward.
+  const MAX_TURN = Math.PI / 5; // 36 degrees per hop, keeps corners gentle
+  const DRIFT_TURN = Math.PI / 9; // 20 degrees, used when no direction signal exists
+  // Real coordinates inside the same city can differ by a fraction of a map
+  // unit - that's GPS-level noise, not a meaningful direction. Letting it
+  // steer the heading was the actual bug: two noisy signals a hop apart
+  // would point in near-opposite directions, and clamped or not, nudging
+  // toward first one then the other read as the vehicle bouncing in place.
+  // Only offsets clearly bigger than that noise floor are trusted as a real
+  // direction hint.
+  const NOISE_FLOOR = 5;
+  // Direction hints must come from the ORIGINAL, unshifted coordinates -
+  // once a point has already been nudged out to minDistance, measuring the
+  // "next" direction from that shifted point against a still-untouched real
+  // point mixes two different scales and produces meaningless deltas (this
+  // was the actual source of the 180-degree flips). The cascade itself -
+  // where each new point is placed - still builds off the previous
+  // (possibly already-shifted) point so the drawn path stays continuous.
+  const originalPoints = stops.map((stop) => stop.point);
+  let heading = 0;
+  let headingKnown = false;
+
+  for (let i = 1; i < stops.length; i++) {
+    const trueDx = originalPoints[i][0] - originalPoints[i - 1][0];
+    const trueDy = originalPoints[i][1] - originalPoints[i - 1][1];
+    const trueDistance = Math.hypot(trueDx, trueDy);
+
+    if (trueDistance >= minDistance) {
+      // Real, already-visible hop: adopt its direction so the next
+      // synthetic stretch flows out of it naturally. Its point is left as
+      // the true coordinate - no adjustment needed.
+      heading = Math.atan2(trueDy, trueDx);
+      headingKnown = true;
+      continue;
+    }
+
+    const rawAngle = trueDistance > NOISE_FLOOR ? Math.atan2(trueDy, trueDx) : null;
+    if (!headingKnown) {
+      heading = rawAngle ?? 0;
+      headingKnown = true;
+    } else if (rawAngle !== null) {
+      let delta = rawAngle - heading;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta)); // wrap to [-PI, PI]
+      delta = Math.max(-MAX_TURN, Math.min(MAX_TURN, delta));
+      heading += delta;
+    } else {
+      heading += DRIFT_TURN;
+    }
+
+    const anchor = stops[i - 1].point;
+    stops[i] = {
+      ...stops[i],
+      point: [anchor[0] + Math.cos(heading) * minDistance, anchor[1] + Math.sin(heading) * minDistance],
+    };
+  }
+  return stops;
+}
+
 export function projectStops(stops, projection) {
-  return stops.map((stop) => ({
+  const projected = stops.map((stop) => ({
     ...stop,
     point: projection(stop.coordinates),
   }));
+  return spreadClusteredPoints(projected, MIN_STOP_SEPARATION);
 }
 
 export function getStopsViewBox(stops, padding = 70, minSize = 220) {
