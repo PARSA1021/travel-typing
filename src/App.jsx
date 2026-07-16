@@ -23,11 +23,7 @@ import {
 const TIMED_MS = 30000;
 const ARRIVAL_POPUP_MS = 1200;
 
-// 숨겨진 입력창에 항상 보이지 않는 문자(zero-width space) 하나를 심어둔다.
-// 이유: 입력창이 완전히 비어 있을 때는 일부 모바일 가상 키보드가 백스페이스를
-// 눌러도 아예 input 이벤트를 발생시키지 않는다("지울 게 없으니 이벤트 없음").
-// 항상 지울 게 하나 있게 만들어두면, 시드 문자가 사라졌다는 사실 자체로
-// "사용자가 백스페이스를 눌렀다"는 걸 안정적으로 감지할 수 있다.
+// 모바일 백스페이스 안정적 감지를 위한 시드 문자
 const INPUT_SEED = "\u200B";
 
 export default function App() {
@@ -73,9 +69,6 @@ export default function App() {
     document.body.classList.toggle("dark", dark);
   }, [dark]);
 
-  // 컴포넌트가 사라질 때 예약된 도착 팝업 타이머가 남아있으면 정리한다.
-  // (예전에는 backToHome/advanceStop을 거치지 않고 앱 자체가 언마운트되는
-  // 드문 경로에서 setTimeout이 살아남을 수 있었다.)
   useEffect(() => {
     return () => clearTimeout(arrivalTimerRef.current);
   }, []);
@@ -144,8 +137,6 @@ export default function App() {
     if (screen === "game" && timerMode === "timed" && elapsedMs >= TIMED_MS) finishGame();
   }, [elapsedMs, finishGame, screen, timerMode]);
 
-  // 게임 화면인데 runStops가 비어있으면(코스를 못 찾았거나 데이터 문제) 무한정
-  // 빈 화면을 보여주는 대신 홈으로 돌려보낸다.
   useEffect(() => {
     if (screen === "game" && data && geoModel && runStops.length === 0) {
       setScreen("home");
@@ -169,8 +160,6 @@ export default function App() {
     setGameState({ stopIndex: nextIndex, typedIndex: 0 });
   }, [finishGame, runStops, completed, setGameState]);
 
-  // 방금 입력한 글자를 한 글자 되돌린다. 도착 연출(도착 팝업이 뜨고 다음
-  // 정류장으로 넘어가기 직전) 중에는 이미 "도착 확정"된 상태라 되돌리지 않는다.
   const deleteCharacter = useCallback(() => {
     if (!gameActiveRef.current) return;
     if (arrivalStop) return;
@@ -210,8 +199,7 @@ export default function App() {
           const arrived = runStops[stopIndexRef.current];
           setGameState({ arrivalStop: arrived });
           arrivalTimerRef.current = setTimeout(advanceStop, ARRIVAL_POPUP_MS);
-        }
-        else {
+        } else {
           setGameState({ typedIndex: typedIndexRef.current });
         }
       } else {
@@ -227,11 +215,12 @@ export default function App() {
     [advanceStop, runStops, typingLanguage, correct, errors, combo, maxCombo, setGameState],
   );
 
+  // ==================== 개선된 입력 처리 ====================
   const consumeTypingInput = useCallback(
     (input) => {
       const raw = input.value;
 
-      // 시드 문자가 사라졌다는 건 백스페이스가 눌렸다는 뜻이다.
+      // 백스페이스 감지
       if (!raw.startsWith(INPUT_SEED)) {
         input.value = INPUT_SEED;
         setGameState({ compositionText: "" });
@@ -240,19 +229,29 @@ export default function App() {
       }
 
       const value = raw.slice(INPUT_SEED.length);
-      input.value = INPUT_SEED;
+      if (!value) {
+        input.value = INPUT_SEED;
+        return;
+      }
+
+      const characters = normalizeCommittedText(value, typingLanguage);
+      input.value = INPUT_SEED;                    // 즉시 초기화
       setGameState({ compositionText: "" });
-      if (!value) return;
-      for (const character of normalizeCommittedText(value, typingLanguage)) typeCharacter(character);
+
+      for (const character of characters) {
+        typeCharacter(character);
+      }
     },
     [typeCharacter, deleteCharacter, typingLanguage, setGameState],
   );
 
   const handleTypingInput = useCallback(
     (event) => {
-      if (isComposingRef.current || event.nativeEvent.isComposing) {
+      if (isComposingRef.current || event.nativeEvent?.isComposing) {
         const raw = event.currentTarget.value;
-        setGameState({ compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw });
+        setGameState({
+          compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw
+        });
         return;
       }
       consumeTypingInput(event.currentTarget);
@@ -263,11 +262,9 @@ export default function App() {
   const handleCompositionStart = useCallback((event) => {
     isComposingRef.current = true;
     const raw = event.currentTarget.value;
-    setGameState({ compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw });
-  }, [setGameState]);
-
-  const handleCompositionUpdate = useCallback((event) => {
-    setGameState({ compositionText: event.data || event.currentTarget.value || "" });
+    setGameState({
+      compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw
+    });
   }, [setGameState]);
 
   const handleCompositionEnd = useCallback(
@@ -279,6 +276,7 @@ export default function App() {
     [consumeTypingInput, setGameState],
   );
 
+  // ==================== 키보드 이벤트 ====================
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.isComposing || event.keyCode === 229) return;
@@ -289,10 +287,6 @@ export default function App() {
       if (screen !== "game") return;
 
       if (event.key === "Backspace") {
-        // 입력창이 포커스되어 있으면(게임 중 대부분의 경우) 브라우저가 시드
-        // 문자를 지우면서 발생시키는 input 이벤트 쪽(consumeTypingInput)이
-        // 이미 처리한다. 여기서 또 처리하면 한 번의 백스페이스가 두 글자를
-        // 지우는 버그가 생긴다.
         if (event.target === typingInputRef.current) return;
         event.preventDefault();
         deleteCharacter();
@@ -308,9 +302,11 @@ export default function App() {
         event.key.length !== 1
       )
         return;
+
       if (event.key === " ") event.preventDefault();
       typeCharacter(event.key);
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [backToHome, deleteCharacter, screen, typeCharacter]);
@@ -334,9 +330,9 @@ export default function App() {
         aria-describedby={screen === "game" ? "typing-instruction" : undefined}
         onInput={handleTypingInput}
         onCompositionStart={handleCompositionStart}
-        onCompositionUpdate={handleCompositionUpdate}
         onCompositionEnd={handleCompositionEnd}
       />
+
       {showSiteChrome ? (
         <header className="topbar">
           <button className="brand" type="button" onClick={backToHome} aria-label="홈으로">
@@ -355,6 +351,7 @@ export default function App() {
           </div>
         </header>
       ) : null}
+
       <main>
         {error ? <DataError message={error.message} /> : null}
         {!error && (!data || !geoModel) ? (
@@ -363,6 +360,7 @@ export default function App() {
             여행 데이터를 불러오는 중…
           </div>
         ) : null}
+
         {data && geoModel && screen === "home" ? (
           <HomeScreen
             routes={data.routes}
@@ -377,6 +375,7 @@ export default function App() {
             onStart={startGame}
           />
         ) : null}
+
         {data && geoModel && screen === "game" && runStops.length ? (
           <GameScreen
             countries={geoModel.countries}
@@ -397,6 +396,7 @@ export default function App() {
             onFocusTyping={() => typingInputRef.current?.focus({ preventScroll: true })}
           />
         ) : null}
+
         {screen === "result" ? (
           <ResultScreen
             elapsed={elapsed}
@@ -407,6 +407,7 @@ export default function App() {
           />
         ) : null}
       </main>
+
       {showSiteChrome ? (
         <footer>
           <div className="footer-brand">

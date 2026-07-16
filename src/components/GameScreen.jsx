@@ -31,17 +31,13 @@ export function GameScreen({
   const journeyProgress = targetCharacters.length ? typedIndex / targetCharacters.length : 0;
   const isKorean = typingLanguage === "ko";
   const upcomingMode = next?.mode;
-  const countryClass = getCountryAccentClass(stop.country);
+  const countryClass = getCountryAccentClass(stop?.country);
 
-  // 글자 수에 비례해 자동으로 줄어들되, 너무 작아지거나 너무 커지지 않도록
-  // 상/하한을 둔다. (기존 calc(400px / n)은 글자 수가 아주 많거나 적을 때
-  // 폭주하거나 뭉개질 수 있었다.)
   const fitFontSize = `clamp(1.4rem, ${(400 / (targetCharacters.length * (isKorean ? 1 : 0.62))).toFixed(2)}px, 4.5rem)`;
 
-  // 목적지 이름과 "무엇을 입력해야 하는지"가 같은 언어일 때 중복 안내되던 문제 수정
   const typingInstruction = isKorean
-    ? `${stop.name_ko}를 입력하세요`
-    : `${stop.name_ko}, 영문 지명 ${stop.name_en}을 입력하세요`;
+    ? `${stop?.name_ko}를 입력하세요`
+    : `${stop?.name_ko}, 영문 지명 ${stop?.name_en}을 입력하세요`;
 
   return (
     <section className={`game-screen-fullscreen ${countryClass} ${shake ? "error-flash" : ""}`} onClick={onFocusTyping}>
@@ -50,7 +46,14 @@ export function GameScreen({
       </p>
 
       <div className="map-layer">
-        <TravelMap countries={countries} stops={stops} stopIndex={stopIndex} journeyProgress={journeyProgress} shake={shake} />
+        <TravelMap 
+          countries={countries} 
+          stops={stops} 
+          stopIndex={stopIndex} 
+          journeyProgress={journeyProgress} 
+          shake={shake}
+          arrivalStop={arrivalStop} 
+        />
         <ArrivalPopup stop={arrivalStop} visible={Boolean(arrivalStop)} />
       </div>
 
@@ -121,8 +124,8 @@ export function GameScreen({
 
           <div className="center-section">
             <div className="current-stop-title">
-              <h2>{stop.name_ko}</h2>
-              <p>{stop.name_en}</p>
+              <h2>{stop?.name_ko}</h2>
+              <p>{stop?.name_en}</p>
             </div>
 
             <div
@@ -131,13 +134,27 @@ export function GameScreen({
               title="백스페이스로 되돌릴 수 있어요"
             >
               {targetCharacters.map((character, index) => {
-                const isHidden = difficulty === "advanced" && index > 0 && index >= typedIndex && character !== " ";
-                let className = index < typedIndex ? "typed particle-pop" : index === typedIndex ? "current" : (isHidden ? "hint-hidden" : "");
+                const isTyped = index < typedIndex;
+                const isCurrent = index === typedIndex;
+                const isHidden = difficulty === "advanced" && index > 0 && !isTyped && character !== " ";
+
+                let className = "";
+                if (isTyped) className = "typed particle-pop";
+                else if (isCurrent) className = "current";
+                else if (isHidden) className = "hint-hidden";
+
                 if (character === " ") className += " is-space";
 
                 return (
-                  <span key={`${character}-${index}`} className={className}>
-                    {isHidden ? "•" : character === " " ? (index === typedIndex ? "␣" : "\u00A0") : character}
+                  <span 
+                    key={`${character}-${index}`} 
+                    className={className}
+                  >
+                    {isHidden 
+                      ? "•" 
+                      : character === " " 
+                        ? (isCurrent ? "␣" : "\u00A0") 
+                        : character}
                   </span>
                 );
               })}
