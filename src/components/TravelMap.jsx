@@ -1,8 +1,24 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { getStopsViewBox, pointOnArc, segmentPath, flowBow, TRAVEL_MODES } from "../lib/geo";
 
-// Smoothly eases the camera from one viewBox to the next instead of snapping
-function useSmoothViewBox(target) {
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReduced(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return reduced;
+}
+
+// Smoothly eases the camera from one viewBox to the next instead of snapping.
+// When the user prefers reduced motion, the camera jumps straight to target.
+function useSmoothViewBox(target, reduced) {
   const [box, setBox] = useState(target);
   const boxRef = useRef(target);
   const frameRef = useRef(null);
@@ -12,6 +28,12 @@ function useSmoothViewBox(target) {
   });
 
   useEffect(() => {
+    if (reduced) {
+      cancelAnimationFrame(frameRef.current);
+      boxRef.current = target;
+      setBox(target);
+      return undefined;
+    }
     cancelAnimationFrame(frameRef.current);
     const step = () => {
       const current = boxRef.current;
@@ -25,19 +47,18 @@ function useSmoothViewBox(target) {
     frameRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, target);
+  }, [reduced, ...target]);
 
   return box;
 }
 
 // Simple label collision avoidance: shift labels that overlap
 function resolveLabels(stops) {
-  const labels = stops.map((stop, index) => ({
+  const labels = stops.map((stop) => ({
     x: stop.point[0],
     y: stop.point[1] - 18,
     anchor: "middle",
     city: stop.city,
-    index,
   }));
 
   // Greedy pass: for each pair, push apart if too close
@@ -94,13 +115,14 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
 });
 
 export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake }) {
+  const reducedMotion = usePrefersReducedMotion();
   const nextIndex = stopIndex + 1 < stops.length ? stopIndex + 1 : null;
   const current = stops[stopIndex];
   const next = nextIndex === null ? null : stops[nextIndex];
 
   // Zoom camera to current segment instead of whole country
   const targetBox = getStopsViewBox([current, next].filter(Boolean), 90, 260);
-  const viewBox = useSmoothViewBox(targetBox).join(" ");
+  const viewBox = useSmoothViewBox(targetBox, reducedMotion).join(" ");
   const isFlight = next?.mode === TRAVEL_MODES.PLANE;
   const bow = next ? flowBow(next.mode, stopIndex) : 0;
   const vehiclePoint = next ? pointOnArc(current.point, next.point, journeyProgress, bow) : current.point;
@@ -209,19 +231,30 @@ export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake 
       <g
         className={`vehicle-wrapper ${shake ? "is-error" : ""}`}
         transform={`translate(${vehiclePoint[0]},${vehiclePoint[1]}) rotate(${vehicleAngle})`}
-        style={{ transition: "transform 0.15s ease-out" }}
+        style={{ transition: reducedMotion ? "none" : "transform 0.15s ease-out" }}
         filter="url(#vehicleShadow)"
       >
         <g className={`map-vehicle ${isFlight ? "is-flight" : "is-bus"}`}>
-          {isFlight ? <PlaneIcon progress={journeyProgress} /> : <BusIcon progress={journeyProgress} />}
+          {isFlight ? <PlaneIcon progress={journeyProgress} reduced={reducedMotion} /> : <BusIcon progress={journeyProgress} reduced={reducedMotion} />}
         </g>
       </g>
     </svg>
   );
 }
 
-function BusIcon({ progress }) {
-  const wheelRot = progress * 360 * 6; // 6 full rotations per segment
+function Wheel({ x }) {
+  return (
+    <>
+      <circle cx={x} cy="0" r="3" fill="#1F2937" />
+      <circle cx={x} cy="0" r="1.5" fill="#6B7280" />
+      <line x1={x} y1="-2" x2={x} y2="2" stroke="#D1D5DB" strokeWidth="0.8" />
+      <line x1={x - 2} y1="0" x2={x + 2} y2="0" stroke="#D1D5DB" strokeWidth="0.8" />
+    </>
+  );
+}
+
+function BusIcon({ progress, reduced }) {
+  const wheelRot = reduced ? 0 : progress * 360 * 6; // 6 full rotations per segment
   return (
     <g className="vehicle-icon bus-icon" transform="scale(0.65)">
       {/* Shadow oval */}
@@ -239,16 +272,10 @@ function BusIcon({ progress }) {
 
       {/* Wheels */}
       <g transform={`translate(-8, 9) rotate(${wheelRot})`}>
-        <circle cx="0" cy="0" r="3" fill="#1F2937" />
-        <circle cx="0" cy="0" r="1.5" fill="#6B7280" />
-        <line x1="0" y1="-2" x2="0" y2="2" stroke="#D1D5DB" strokeWidth="0.8" />
-        <line x1="-2" y1="0" x2="2" y2="0" stroke="#D1D5DB" strokeWidth="0.8" />
+        <Wheel x={0} />
       </g>
       <g transform={`translate(6, 9) rotate(${wheelRot})`}>
-        <circle cx="0" cy="0" r="3" fill="#1F2937" />
-        <circle cx="0" cy="0" r="1.5" fill="#6B7280" />
-        <line x1="0" y1="-2" x2="0" y2="2" stroke="#D1D5DB" strokeWidth="0.8" />
-        <line x1="-2" y1="0" x2="2" y2="0" stroke="#D1D5DB" strokeWidth="0.8" />
+        <Wheel x={0} />
       </g>
 
       {/* Front light */}
@@ -261,9 +288,9 @@ function BusIcon({ progress }) {
   );
 }
 
-function PlaneIcon({ progress }) {
+function PlaneIcon({ progress, reduced }) {
   // Gentle bobbing effect based on progress (sine wave)
-  const hoverY = Math.sin(progress * Math.PI * 4) * 2;
+  const hoverY = reduced ? 0 : Math.sin(progress * Math.PI * 4) * 2;
   return (
     <g className="vehicle-icon plane-icon" transform={`scale(0.65) translate(0, ${hoverY})`}>
       {/* Shadow */}
