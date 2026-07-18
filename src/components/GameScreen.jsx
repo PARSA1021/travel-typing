@@ -1,8 +1,9 @@
 import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb, Volume2, VolumeX } from "lucide-react";
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
+import { SplitFlap } from "./SplitFlap";
 import { TRAVEL_MODES } from "../lib/geo";
-import { getCountryAccentClass } from "../lib/Countrytheme";
+import { getCountryAccentClass } from "../lib/Countrytheme.js";
 import { useGameStore } from "../store/useGameStore";
 
 export function GameScreen({
@@ -80,22 +81,22 @@ export function GameScreen({
             <div className="progress-track" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={stops.length}>
               <div className="progress-fill" style={{ width: `${(completed / stops.length) * 100}%` }} />
             </div>
-            <span>{completed} / {stops.length}</span>
+            <span><SplitFlap value={completed} /> / {stops.length}</span>
           </div>
         </div>
 
         <div className="header-right">
           <div className="status-pill">
             <span>정확도</span>
-            <strong>{metrics.accuracy}%</strong>
+            <strong><SplitFlap value={metrics.accuracy} />%</strong>
           </div>
           <div className={`status-pill ${metrics.combo >= 10 ? "is-hot" : ""}`}>
             <span><Flame size={12} aria-hidden="true" /> 콤보</span>
-            <strong>{metrics.combo}</strong>
+            <strong><SplitFlap value={metrics.combo} /></strong>
           </div>
           <div className="status-pill">
             <span>속도</span>
-            <strong>{metrics.speed} {metrics.speedUnit}</strong>
+            <strong><SplitFlap value={metrics.speed} /> {metrics.speedUnit}</strong>
           </div>
         </div>
       </header>
@@ -106,7 +107,7 @@ export function GameScreen({
         <div className="helper-popup">
           <div className="timer-badge">
             <span className="timer-label">{mode === "timed" ? "남은 시간" : "운행 시간"}</span>
-            <span className="timer-value">{mode === "timed" ? remaining : elapsed}</span>
+            <span className="timer-value"><SplitFlap value={mode === "timed" ? remaining : elapsed} /></span>
           </div>
           {next ? (
             <div className="transport-badge">

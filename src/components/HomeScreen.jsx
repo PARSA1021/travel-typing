@@ -3,6 +3,7 @@ import { Shuffle, ChevronRight, Map, Star, Award, Settings2, Play, MapPin, Plane
 import { useGameStore } from "../store/useGameStore";
 import { GAME_TYPES } from "../lib/gameTypes";
 import { loadStats } from "../lib/stats";
+import { SplitFlap } from "./SplitFlap";
 
 // 하위 호환: 기존에 App.jsx 등에서 `import { GAME_TYPES } from "./components/HomeScreen"`로
 // 가져다 쓰던 코드가 계속 동작하도록 재수출한다. 실제 정의는 lib/gameTypes.js에 있다
@@ -111,13 +112,31 @@ export function HomeScreen({
           {dark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
       </div>
-      <section className="album-hero">
-        <div className="hero-badge">✈️ MY TRAVEL TYPING</div>
+      <section className="boarding-pass">
+        <div className="boarding-pass-top">
+          <div className="hero-badge">✈️ MY TRAVEL TYPING</div>
+          <span className="boarding-pass-class">ECONOMY · TYPING CLASS</span>
+        </div>
         <h1 className="album-title">유럽 여행을<br/>타이핑으로 떠나요</h1>
         <p className="album-sub">
           프랑스, 스위스, 이탈리아의 아름다운 여행지를<br/>
           손끝으로 방문하세요.
         </p>
+        <div className="boarding-pass-perf" aria-hidden="true" />
+        <div className="boarding-pass-fields">
+          <div className="bp-field">
+            <span className="bp-label">PASSENGER</span>
+            <span className="bp-value">유럽 여행자</span>
+          </div>
+          <div className="bp-field">
+            <span className="bp-label">DESTINATION</span>
+            <span className="bp-value">FRA · CHE · ITA</span>
+          </div>
+          <div className="bp-field">
+            <span className="bp-label">GATE</span>
+            <span className="bp-value">TYPING-01</span>
+          </div>
+        </div>
       </section>
 
       {/* My stats */}
@@ -128,19 +147,19 @@ export function HomeScreen({
           </h3>
           <div className="my-stats-grid">
             <div className="my-stat-card">
-              <span className="my-stat-value">{myStats.totalRuns}</span>
+              <span className="my-stat-value"><SplitFlap value={myStats.totalRuns} /></span>
               <span className="my-stat-label">완주한 여행</span>
             </div>
             <div className="my-stat-card">
-              <span className="my-stat-value">{myStats.totalStopsVisited}</span>
+              <span className="my-stat-value"><SplitFlap value={myStats.totalStopsVisited} /></span>
               <span className="my-stat-label">방문한 정류장</span>
             </div>
             <div className="my-stat-card">
-              <span className="my-stat-value">{myStats.bestAccuracy}%</span>
+              <span className="my-stat-value"><SplitFlap value={myStats.bestAccuracy} />%</span>
               <span className="my-stat-label">최고 정확도</span>
             </div>
             <div className="my-stat-card">
-              <span className="my-stat-value"><Flame size={16} aria-hidden="true" />{myStats.bestCombo}</span>
+              <span className="my-stat-value"><Flame size={16} aria-hidden="true" /><SplitFlap value={myStats.bestCombo} /></span>
               <span className="my-stat-label">최고 콤보</span>
             </div>
           </div>

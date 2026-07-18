@@ -1,4 +1,6 @@
-import { Home, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Home, RotateCcw, BadgeCheck } from "lucide-react";
+import { SplitFlap } from "./SplitFlap";
 
 export function ResultScreen({ elapsed, completed, metrics, onBack, onRetry }) {
   const stats = [
@@ -11,11 +13,15 @@ export function ResultScreen({ elapsed, completed, metrics, onBack, onRetry }) {
 
   return (
     <div className="result">
-      <p className="result-eyebrow">TRIP COMPLETE</p>
+      <div className="result-seal" aria-hidden="true">
+        <BadgeCheck size={26} />
+        <span>PASSPORT<br/>CONTROL</span>
+      </div>
+      <p className="result-eyebrow">BOARDING COMPLETE</p>
       <h1>여행을 마쳤습니다 🧳</h1>
       <div className="result-grid" role="list">
-        {stats.map((stat) => (
-          <ResultStat key={stat.key} {...stat} />
+        {stats.map((stat, index) => (
+          <ResultStat key={stat.key} {...stat} revealDelay={index * 90} />
         ))}
       </div>
       <div className="result-actions">
@@ -30,11 +36,20 @@ export function ResultScreen({ elapsed, completed, metrics, onBack, onRetry }) {
   );
 }
 
-function ResultStat({ label, value, unit }) {
+function ResultStat({ label, value, unit, revealDelay = 0 }) {
+  // 도착 전광판처럼, 화면에 들어오는 순간 0에서 실제 값으로 순서대로
+  // 갈리며 나타난다.
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setRevealed(true), 150 + revealDelay);
+    return () => clearTimeout(timer);
+  }, [revealDelay]);
+
   return (
     <div className="result-stat" role="listitem">
       <small>{label}</small>
-      <strong>{value}</strong>
+      <strong><SplitFlap value={revealed ? value : 0} /></strong>
       <span>{unit}</span>
     </div>
   );
