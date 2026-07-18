@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shuffle, ChevronRight, Map, Star, Award, Settings2, Play, MapPin, Plane, Moon, Sun } from "lucide-react";
+import { Shuffle, ChevronRight, Map, Star, Award, Settings2, Play, MapPin, Plane, Moon, Sun, Volume2, VolumeX, Footprints, CheckCircle2, Flame } from "lucide-react";
 import { useGameStore } from "../store/useGameStore";
 import { GAME_TYPES } from "../lib/gameTypes";
+import { loadStats } from "../lib/stats";
 
+// 하위 호환: 기존에 App.jsx 등에서 `import { GAME_TYPES } from "./components/HomeScreen"`로
+// 가져다 쓰던 코드가 계속 동작하도록 재수출한다. 실제 정의는 lib/gameTypes.js에 있다
+// (여기 두면 useGameStore.js ↔ HomeScreen.jsx 순환 참조가 생김).
 export { GAME_TYPES };
 
 const COUNTRY_COLORS = {
@@ -13,6 +17,14 @@ const COUNTRY_COLORS = {
 };
 
 const DAY_MS = 86400000;
+
+// 정류장별 rating의 평균을 코스 평점으로 보여준다 (지금까지 데이터에만
+// 있고 화면 어디에도 안 쓰이고 있던 값).
+function getRouteRating(route) {
+  if (!route.stops.length) return null;
+  const sum = route.stops.reduce((total, stop) => total + (stop.rating || 0), 0);
+  return Math.round((sum / route.stops.length) * 10) / 10;
+}
 
 export function HomeScreen({
   routes,
@@ -32,15 +44,26 @@ export function HomeScreen({
     setDifficulty: setStoreDifficulty,
     dark,
     setDark,
+    soundOn,
+    setSoundOn,
   } = useGameStore();
 
+  // 스토어에 이미 저장된 난이도가 있으면 그걸로 초기화한다.
+  // (이전에는 항상 "beginner"로 고정되어, 새로고침 후에도 화면이 실제 저장된
+  // 난이도를 반영하지 못하는 문제가 있었다.)
   const [difficulty, setDifficulty] = useState(storedDifficulty || "beginner");
 
+  // 홈 화면은 게임이 끝날 때마다 다시 마운트되므로, 초기값을 이 시점에
+  // 읽어오는 것만으로 매번 최신 기록이 반영된다.
+  const [myStats] = useState(() => loadStats());
+
+  // 오늘의 추천 코스: routes가 바뀌지 않는 한 하루에 한 번만 다시 계산한다.
   const todaysRoute = useMemo(() => {
     if (!routes.length) return null;
     return routes[Math.floor(Date.now() / DAY_MS) % routes.length];
   }, [routes]);
 
+  // 설정 시트가 열려 있을 때 Esc로 닫을 수 있게 한다.
   useEffect(() => {
     if (!showSettings) return undefined;
     const onKeyDown = (event) => {
@@ -58,6 +81,9 @@ export function HomeScreen({
 
   const handleDifficultySelect = (level) => {
     setDifficulty(level);
+    // useGameStore.setDifficulty가 typingLanguage까지 함께 세팅해준다.
+    // (여기서 onTypingLanguageChange를 또 호출하면 같은 로직이 두 곳에 중복되어
+    // 나중에 store 쪽 규칙이 바뀌었을 때 여기만 안 바뀌는 식으로 어긋나기 쉽다.)
     setStoreDifficulty(level);
   };
 
@@ -69,6 +95,15 @@ export function HomeScreen({
         <button
           className="icon-button"
           type="button"
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "효과음 끄기" : "효과음 켜기"}
+          onClick={() => setSoundOn(!soundOn)}
+        >
+          {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
+        </button>
+        <button
+          className="icon-button"
+          type="button"
           aria-pressed={dark}
           aria-label="다크모드 전환"
           onClick={() => setDark(!dark)}
@@ -76,7 +111,6 @@ export function HomeScreen({
           {dark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
       </div>
-
       <section className="album-hero">
         <div className="hero-badge">✈️ MY TRAVEL TYPING</div>
         <h1 className="album-title">유럽 여행을<br/>타이핑으로 떠나요</h1>
@@ -86,7 +120,38 @@ export function HomeScreen({
         </p>
       </section>
 
-      {/* Today's pick - 더 강조 */}
+      {/* My stats */}
+      {myStats.totalRuns > 0 ? (
+        <section className="album-my-stats">
+          <h3 className="section-title">
+            <Footprints size={20} aria-hidden="true" /> 나의 기록
+          </h3>
+          <div className="my-stats-grid">
+            <div className="my-stat-card">
+              <span className="my-stat-value">{myStats.totalRuns}</span>
+              <span className="my-stat-label">완주한 여행</span>
+            </div>
+            <div className="my-stat-card">
+              <span className="my-stat-value">{myStats.totalStopsVisited}</span>
+              <span className="my-stat-label">방문한 정류장</span>
+            </div>
+            <div className="my-stat-card">
+              <span className="my-stat-value">{myStats.bestAccuracy}%</span>
+              <span className="my-stat-label">최고 정확도</span>
+            </div>
+            <div className="my-stat-card">
+              <span className="my-stat-value"><Flame size={16} aria-hidden="true" />{myStats.bestCombo}</span>
+              <span className="my-stat-label">최고 콤보</span>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="album-my-stats is-empty">
+          <p>첫 여행을 완주하면 여기에 나만의 기록이 쌓여요 🧳</p>
+        </section>
+      )}
+
+      {/* Today's pick */}
       {todaysRoute ? (
         <section className="album-todays-pick">
           <button
@@ -99,11 +164,19 @@ export function HomeScreen({
                 <Star size={14} fill="currentColor" aria-hidden="true" /> 오늘의 추천
               </div>
               <h2>{todaysRoute.title}</h2>
-              <p>{todaysRoute.country} · {todaysRoute.stops.length}곳</p>
+              <p>
+                {todaysRoute.country} · {todaysRoute.stops.length}곳
+                {getRouteRating(todaysRoute) ? ` · ⭐ ${getRouteRating(todaysRoute)}` : ""}
+              </p>
+              {myStats.completedRouteIds.includes(todaysRoute.id) ? (
+                <span className="route-completed-tag">
+                  <CheckCircle2 size={13} aria-hidden="true" /> 완주 완료
+                </span>
+              ) : null}
             </div>
             <div className="pick-right">
               <span className="pick-flag">{todaysRoute.countryFlag}</span>
-              <ChevronRight size={24} aria-hidden="true" />
+              <ChevronRight size={20} aria-hidden="true" />
             </div>
           </button>
         </section>
@@ -115,27 +188,46 @@ export function HomeScreen({
           <MapPin size={20} aria-hidden="true" /> 여행 코스
         </h3>
         <div className="album-gallery">
-          {routes.map((route) => (
-            <button
-              key={route.id}
-              type="button"
-              className={`album-card ${selectedRouteId === route.id ? "is-selected" : ""}`}
-              aria-pressed={selectedRouteId === route.id}
-              onClick={() => handleRouteSelect(route.id)}
-            >
-              <div
-                className="album-card-image"
-                style={{ background: COUNTRY_COLORS[route.country] || COUNTRY_COLORS.Italy }}
+          {routes.map((route) => {
+            const rating = getRouteRating(route);
+            const firstStop = route.stops[0];
+            const lastStop = route.stops[route.stops.length - 1];
+            const isCompleted = myStats.completedRouteIds.includes(route.id);
+            return (
+              <button
+                key={route.id}
+                type="button"
+                className={`album-card ${selectedRouteId === route.id ? "is-selected" : ""}`}
+                aria-pressed={selectedRouteId === route.id}
+                onClick={() => handleRouteSelect(route.id)}
               >
-                <span className="album-card-flag">{route.countryFlag}</span>
-                <span className="album-card-stops">{route.stops.length} Places</span>
-              </div>
-              <div className="album-card-content">
-                <h4 className="album-card-title">{route.title}</h4>
-                <p className="album-card-meta">{route.country}</p>
-              </div>
-            </button>
-          ))}
+                <div
+                  className="album-card-image"
+                  style={{ background: COUNTRY_COLORS[route.country] || COUNTRY_COLORS.Italy }}
+                >
+                  {rating ? (
+                    <span className="album-card-rating">
+                      <Star size={11} fill="currentColor" aria-hidden="true" /> {rating}
+                    </span>
+                  ) : null}
+                  {isCompleted ? (
+                    <span className="album-card-completed">
+                      <CheckCircle2 size={13} aria-hidden="true" />
+                    </span>
+                  ) : null}
+                  <span className="album-card-flag">{route.countryFlag}</span>
+                  <span className="album-card-stops">{route.stops.length} Places</span>
+                </div>
+                <div className="album-card-content">
+                  <h4 className="album-card-title">{route.title}</h4>
+                  <p className="album-card-meta">{route.country}</p>
+                  {firstStop && lastStop && firstStop !== lastStop ? (
+                    <p className="album-card-route">{firstStop.name_ko} → {lastStop.name_ko}</p>
+                  ) : null}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -179,7 +271,7 @@ export function HomeScreen({
         </div>
       </section>
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet (settings) */}
       <div className={`album-bottom-sheet ${showSettings ? "is-open" : ""}`}>
         <div
           className="sheet-backdrop"
@@ -263,14 +355,8 @@ export function HomeScreen({
           </div>
 
           <div className="sheet-footer">
-            <button 
-              type="button" 
-              className="start-journey-btn" 
-              disabled={!canStart} 
-              onClick={onStart}
-            >
-              <Play size={18} fill="currentColor" aria-hidden="true" /> 
-              출발하기
+            <button type="button" className="start-journey-btn" disabled={!canStart} onClick={onStart}>
+              <Play size={18} fill="currentColor" aria-hidden="true" /> 출발하기
             </button>
           </div>
         </div>

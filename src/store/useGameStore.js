@@ -31,6 +31,9 @@ export const useGameStore = create((set, get) => ({
   dark: false,
   setDark: (dark) => set({ dark }),
 
+  soundOn: true,
+  setSoundOn: (soundOn) => set({ soundOn }),
+
   // Game state
   stopIndex: 0,
   typedIndex: 0,

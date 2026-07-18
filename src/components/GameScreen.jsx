@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb, Volume2, VolumeX } from "lucide-react";
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { TRAVEL_MODES } from "../lib/geo";
@@ -24,6 +24,8 @@ export function GameScreen({
   onFocusTyping,
 }) {
   const difficulty = useGameStore((state) => state.difficulty);
+  const soundOn = useGameStore((state) => state.soundOn);
+  const setSoundOn = useGameStore((state) => state.setSoundOn);
   const stop = stops[stopIndex];
   const next = stops[stopIndex + 1] ?? null;
   const prev = stops[stopIndex - 1] ?? null;
@@ -59,6 +61,15 @@ export function GameScreen({
         <div className="header-left">
           <button className="pill-button" type="button" onClick={(e) => { e.stopPropagation(); onBack(); }}>
             나가기
+          </button>
+          <button
+            className="mute-toggle"
+            type="button"
+            aria-pressed={soundOn}
+            aria-label={soundOn ? "효과음 끄기" : "효과음 켜기"}
+            onClick={(e) => { e.stopPropagation(); setSoundOn(!soundOn); }}
+          >
+            {soundOn ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}
           </button>
           <span className="brand-text">TRAVEL TYPING</span>
         </div>

@@ -20,6 +20,8 @@ import {
   isIncompleteJamo,
   normalizeCommittedText,
 } from "./lib/typing";
+import { unlockAudio, playCorrectSound, playErrorSound, playArrivalSound } from "./lib/sound";
+import { recordRun } from "./lib/stats";
 
 const TIMED_MS = 30000;
 // 다 타이핑하고 나서 다음 정류장으로 "출발"하기까지의 지연. 방금 친 마지막
@@ -45,6 +47,7 @@ export default function App() {
     timerMode, setTimerMode,
     typingLanguage, setTypingLanguage,
     dark, setDark,
+    soundOn,
     stopIndex, typedIndex, correct, errors, combo, maxCombo, completed, elapsedMs, shake, compositionText, arrivalStop, runStops,
     setGameState, resetGameState
   } = useGameStore();
@@ -112,6 +115,8 @@ export default function App() {
     const stops = buildRunStops();
     if (!stops.length) return;
 
+    unlockAudio(); // "출발하기" 버튼 클릭은 확실한 사용자 제스처라 여기서 풀어둔다
+
     resetGameState();
     setGameState({ runStops: stops });
     resetTypingInput();
@@ -142,9 +147,31 @@ export default function App() {
     resetTypingInput();
     typingInputRef.current?.blur();
     const ms = performance.now() - startTimeRef.current;
-    setGameState({ elapsedMs: timerMode === "timed" ? Math.min(ms, TIMED_MS) : ms });
+    const finalElapsedMs = timerMode === "timed" ? Math.min(ms, TIMED_MS) : ms;
+    setGameState({ elapsedMs: finalElapsedMs });
+
+    // 개인 기록 저장 - 'line' 모드로 특정 코스를 골라 완주했을 때만 해당
+    // 코스를 "완주"로 표시한다 (타임어택 중간에 시간이 끝난 경우 제외).
+    const finalMinutes = Math.max(finalElapsedMs, 2000) / 60000;
+    const finalAttempts = statsRef.current.correct + statsRef.current.errors;
+    const finalAccuracy = finalAttempts ? Math.round((statsRef.current.correct / finalAttempts) * 100) : 100;
+    const finalSpeed =
+      typingLanguage === TYPING_LANGUAGES.KOREAN
+        ? Math.round(statsRef.current.correct / finalMinutes)
+        : Math.round(statsRef.current.correct / 5 / finalMinutes);
+
+    recordRun({
+      completed,
+      accuracy: finalAccuracy,
+      speed: finalSpeed,
+      typingLanguage,
+      maxCombo: statsRef.current.maxCombo,
+      routeId: selectedRouteId,
+      fullyCompletedRoute: gameType === GAME_TYPES.ROUTE && timerMode === "line",
+    });
+
     setScreen("result");
-  }, [resetTypingInput, timerMode, setGameState, setScreen]);
+  }, [resetTypingInput, timerMode, setGameState, setScreen, completed, typingLanguage, gameType, selectedRouteId]);
 
   useEffect(() => {
     if (screen !== "game") return undefined;
@@ -238,6 +265,7 @@ export default function App() {
             maxCombo: stats.maxCombo,
             arrivalStop: arrived,
           });
+          if (soundOn) playArrivalSound(); // 마지막 글자는 클릭음 대신 도착음으로
           clearTimeout(arrivalTimerRef.current);
           clearTimeout(popupTimerRef.current);
           // 버스는 거의 바로 출발하고, 토스트는 그것과 별개로 조금 더
@@ -251,18 +279,21 @@ export default function App() {
             combo: stats.combo,
             maxCombo: stats.maxCombo,
           });
+          if (soundOn) playCorrectSound();
         }
       } else {
         stats.errors += 1;
         stats.combo = 0;
         setGameState({ errors: stats.errors, shake: false, combo: 0 });
+        if (soundOn) playErrorSound();
         requestAnimationFrame(() => setGameState({ shake: true }));
         setTimeout(() => setGameState({ shake: false }), 170);
       }
     },
     // correct/errors/combo/maxCombo은 이제 statsRef로만 관리하므로 의존성에서 뺐다.
-    // 이 콜백은 게임 중엔 runStops/typingLanguage가 바뀌지 않는 한 재생성되지 않는다.
-    [advanceStop, runStops, typingLanguage, setGameState],
+    // 이 콜백은 게임 중엔 runStops/typingLanguage/soundOn이 바뀌지 않는 한
+    // 재생성되지 않는다.
+    [advanceStop, runStops, typingLanguage, soundOn, setGameState],
   );
 
   const consumeTypingInput = useCallback(
