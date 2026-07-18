@@ -3,9 +3,6 @@ import { Shuffle, ChevronRight, Map, Star, Award, Settings2, Play, MapPin, Plane
 import { useGameStore } from "../store/useGameStore";
 import { GAME_TYPES } from "../lib/gameTypes";
 
-// 하위 호환: 기존에 App.jsx 등에서 `import { GAME_TYPES } from "./components/HomeScreen"`로
-// 가져다 쓰던 코드가 계속 동작하도록 재수출한다. 실제 정의는 lib/gameTypes.js에 있다
-// (여기 두면 useGameStore.js ↔ HomeScreen.jsx 순환 참조가 생김).
 export { GAME_TYPES };
 
 const COUNTRY_COLORS = {
@@ -37,18 +34,13 @@ export function HomeScreen({
     setDark,
   } = useGameStore();
 
-  // 스토어에 이미 저장된 난이도가 있으면 그걸로 초기화한다.
-  // (이전에는 항상 "beginner"로 고정되어, 새로고침 후에도 화면이 실제 저장된
-  // 난이도를 반영하지 못하는 문제가 있었다.)
   const [difficulty, setDifficulty] = useState(storedDifficulty || "beginner");
 
-  // 오늘의 추천 코스: routes가 바뀌지 않는 한 하루에 한 번만 다시 계산한다.
   const todaysRoute = useMemo(() => {
     if (!routes.length) return null;
     return routes[Math.floor(Date.now() / DAY_MS) % routes.length];
   }, [routes]);
 
-  // 설정 시트가 열려 있을 때 Esc로 닫을 수 있게 한다.
   useEffect(() => {
     if (!showSettings) return undefined;
     const onKeyDown = (event) => {
@@ -66,9 +58,6 @@ export function HomeScreen({
 
   const handleDifficultySelect = (level) => {
     setDifficulty(level);
-    // useGameStore.setDifficulty가 typingLanguage까지 함께 세팅해준다.
-    // (여기서 onTypingLanguageChange를 또 호출하면 같은 로직이 두 곳에 중복되어
-    // 나중에 store 쪽 규칙이 바뀌었을 때 여기만 안 바뀌는 식으로 어긋나기 쉽다.)
     setStoreDifficulty(level);
   };
 
@@ -87,6 +76,7 @@ export function HomeScreen({
           {dark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
       </div>
+
       <section className="album-hero">
         <div className="hero-badge">✈️ MY TRAVEL TYPING</div>
         <h1 className="album-title">유럽 여행을<br/>타이핑으로 떠나요</h1>
@@ -96,7 +86,7 @@ export function HomeScreen({
         </p>
       </section>
 
-      {/* Today's pick */}
+      {/* Today's pick - 더 강조 */}
       {todaysRoute ? (
         <section className="album-todays-pick">
           <button
@@ -113,7 +103,7 @@ export function HomeScreen({
             </div>
             <div className="pick-right">
               <span className="pick-flag">{todaysRoute.countryFlag}</span>
-              <ChevronRight size={20} aria-hidden="true" />
+              <ChevronRight size={24} aria-hidden="true" />
             </div>
           </button>
         </section>
@@ -189,7 +179,7 @@ export function HomeScreen({
         </div>
       </section>
 
-      {/* Bottom Sheet (settings) */}
+      {/* Bottom Sheet */}
       <div className={`album-bottom-sheet ${showSettings ? "is-open" : ""}`}>
         <div
           className="sheet-backdrop"
@@ -273,8 +263,14 @@ export function HomeScreen({
           </div>
 
           <div className="sheet-footer">
-            <button type="button" className="start-journey-btn" disabled={!canStart} onClick={onStart}>
-              <Play size={18} fill="currentColor" aria-hidden="true" /> 출발하기
+            <button 
+              type="button" 
+              className="start-journey-btn" 
+              disabled={!canStart} 
+              onClick={onStart}
+            >
+              <Play size={18} fill="currentColor" aria-hidden="true" /> 
+              출발하기
             </button>
           </div>
         </div>
