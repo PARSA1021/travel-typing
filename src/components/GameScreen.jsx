@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb } from "lucide-reac
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { TRAVEL_MODES } from "../lib/geo";
-import { getCountryAccentClass } from "../lib/Countrytheme";
+import { getCountryAccentClass } from "../lib/countryTheme";
 import { useGameStore } from "../store/useGameStore";
 
 export function GameScreen({
@@ -23,12 +23,11 @@ export function GameScreen({
   onBack,
   onFocusTyping,
 }) {
-  const { difficulty } = useGameStore();
+  const difficulty = useGameStore((state) => state.difficulty);
   const stop = stops[stopIndex];
   const next = stops[stopIndex + 1] ?? null;
   const prev = stops[stopIndex - 1] ?? null;
   const targetCharacters = [...target];
-  const journeyProgress = targetCharacters.length ? typedIndex / targetCharacters.length : 0;
   const isKorean = typingLanguage === "ko";
   const upcomingMode = next?.mode;
   const countryClass = getCountryAccentClass(stop?.country);
@@ -50,7 +49,6 @@ export function GameScreen({
           countries={countries} 
           stops={stops} 
           stopIndex={stopIndex} 
-          journeyProgress={journeyProgress} 
           shake={shake}
           arrivalStop={arrivalStop} 
         />
@@ -136,25 +134,33 @@ export function GameScreen({
               {targetCharacters.map((character, index) => {
                 const isTyped = index < typedIndex;
                 const isCurrent = index === typedIndex;
+                // 한글 조합 중엔 이 칸에 완성 여부와 상관없이 지금 조합
+                // 버퍼를 그대로 보여준다. typedIndex는 실제 확정(commit)
+                // 시점에만 움직이므로, 이건 순전히 "지금 뭘 치고 있는지"를
+                // 보여주는 시각적 미리보기일 뿐 카운트에는 영향을 주지 않는다.
+                const isComposingHere = isCurrent && isKorean && Boolean(compositionText);
                 const isHidden = difficulty === "advanced" && index > 0 && !isTyped && character !== " ";
 
                 let className = "";
                 if (isTyped) className = "typed particle-pop";
+                else if (isComposingHere) className = "current is-composing";
                 else if (isCurrent) className = "current";
                 else if (isHidden) className = "hint-hidden";
 
                 if (character === " ") className += " is-space";
+
+                let content;
+                if (isComposingHere) content = compositionText;
+                else if (isHidden) content = "•";
+                else if (character === " ") content = isCurrent ? "␣" : "\u00A0";
+                else content = character;
 
                 return (
                   <span 
                     key={`${character}-${index}`} 
                     className={className}
                   >
-                    {isHidden 
-                      ? "•" 
-                      : character === " " 
-                        ? (isCurrent ? "␣" : "\u00A0") 
-                        : character}
+                    {content}
                   </span>
                 );
               })}

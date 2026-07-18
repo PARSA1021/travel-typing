@@ -17,11 +17,19 @@ import {
   TYPING_LANGUAGES,
   getTypingTarget,
   isTypingCharacterMatch,
+  isIncompleteJamo,
   normalizeCommittedText,
 } from "./lib/typing";
 
 const TIMED_MS = 30000;
-const ARRIVAL_POPUP_MS = 1200;
+// 다 타이핑하고 나서 다음 정류장으로 "출발"하기까지의 지연. 방금 친 마지막
+// 글자의 pop 애니메이션이 눈에 들어올 정도로만 아주 짧게 두고, 그 외엔
+// 거의 바로 출발한다.
+const ADVANCE_DELAY_MS = 120;
+// "도착 완료!" 토스트가 화면에 떠 있는 시간. 이동 시작(ADVANCE_DELAY_MS)과는
+// 별개로 흘러가서, 버스가 이미 다음 정류장으로 출발한 뒤에도 토스트는 잠깐
+// 더 떠 있다가 스스로 사라진다.
+const POPUP_VISIBLE_MS = 900;
 
 // 모바일 백스페이스 안정적 감지를 위한 시드 문자
 const INPUT_SEED = "\u200B";
@@ -48,6 +56,15 @@ export default function App() {
   const typedIndexRef = useRef(0);
   const stopIndexRef = useRef(0);
   const arrivalTimerRef = useRef(null);
+  const popupTimerRef = useRef(null);
+
+  // correct/errors/combo/maxCombo을 매 키 입력마다 store에서 읽어오면(구독) 그
+  // 값이 바뀔 때마다 typeCharacter 콜백 자체가 새로 생성되고, 이 콜백을
+  // 의존성으로 갖는 전역 keydown 리스너(useEffect)도 매 타자마다
+  // removeEventListener→addEventListener를 반복하게 된다. typedIndexRef와
+  // 같은 방식으로 ref에 최신값을 들고 있다가 store에는 한 번에 반영만
+  // 하도록 바꿔서, 콜백들이 게임 중엔 재생성되지 않게 만들었다.
+  const statsRef = useRef({ correct: 0, errors: 0, combo: 0, maxCombo: 0 });
 
   const attempts = correct + errors;
   const elapsed = Math.floor(elapsedMs / 1000);
@@ -70,7 +87,10 @@ export default function App() {
   }, [dark]);
 
   useEffect(() => {
-    return () => clearTimeout(arrivalTimerRef.current);
+    return () => {
+      clearTimeout(arrivalTimerRef.current);
+      clearTimeout(popupTimerRef.current);
+    };
   }, []);
 
   const resetTypingInput = useCallback(() => {
@@ -100,6 +120,7 @@ export default function App() {
     typingInputRef.current?.focus({ preventScroll: true });
     typedIndexRef.current = 0;
     stopIndexRef.current = 0;
+    statsRef.current = { correct: 0, errors: 0, combo: 0, maxCombo: 0 };
 
     startTimeRef.current = performance.now();
     setScreen("game");
@@ -110,6 +131,7 @@ export default function App() {
     resetTypingInput();
     typingInputRef.current?.blur();
     clearTimeout(arrivalTimerRef.current);
+    clearTimeout(popupTimerRef.current);
     setGameState({ arrivalStop: null });
     setScreen("home");
   }, [resetTypingInput, setGameState, setScreen]);
@@ -147,10 +169,9 @@ export default function App() {
     const currentIndex = stopIndexRef.current;
 
     setGameState({ completed: completed + 1 });
-    clearTimeout(arrivalTimerRef.current);
-    setGameState({ arrivalStop: null });
 
     if (currentIndex >= runStops.length - 1) {
+      clearTimeout(popupTimerRef.current);
       finishGame();
       return;
     }
@@ -160,18 +181,37 @@ export default function App() {
     setGameState({ stopIndex: nextIndex, typedIndex: 0 });
   }, [finishGame, runStops, completed, setGameState]);
 
+  // 방금 확정(commit)된 글자를 한 글자 되돌린다.
   const deleteCharacter = useCallback(() => {
     if (!gameActiveRef.current) return;
-    if (arrivalStop) return;
     if (typedIndexRef.current <= 0) return;
 
     typedIndexRef.current -= 1;
-    setGameState({
-      typedIndex: typedIndexRef.current,
-      correct: Math.max(0, useGameStore.getState().correct - 1),
-      combo: 0,
-    });
-  }, [arrivalStop, setGameState]);
+    const stats = statsRef.current;
+    stats.correct = Math.max(0, stats.correct - 1);
+    stats.combo = 0;
+    setGameState({ typedIndex: typedIndexRef.current, correct: stats.correct, combo: 0 });
+  }, [setGameState]);
+
+  // 한글 입력 중(조합 세션이 아직 안 끝난) 상태에서 백스페이스를 누르면,
+  // 브라우저 IME가 자모를 하나씩 지우기 시작해 "몽마르트르"의 마지막 음절이
+  // 한 번에 안 지워지고 ㅡ, ㅌ 순으로 나눠 지워지는 문제가 있었다. 조합 중인
+  // 입력창을 blur() 했다가 다시 focus()하면 대부분의 브라우저가 진행 중이던
+  // 조합을 그 자리에서 통째로 취소한다 — 조합 취소의 표준적인 트릭이다.
+  // (조합 중이던 음절은 아직 카운트에 반영된 적이 없으므로, 여기서는
+  // 미리보기만 지우면 된다.)
+  const cancelComposition = useCallback(() => {
+    const input = typingInputRef.current;
+    isComposingRef.current = false;
+    setGameState({ compositionText: "" });
+    if (!input) return;
+    input.blur();
+    // 브라우저가 blur 시 compositionend를 안 쏘는 극히 드문 경우를 대비한 안전장치.
+    // compositionend가 정상적으로 먼저 발생했다면 아래는 그냥 같은 값을 다시
+    // 써주는 셈이라 안전하다.
+    input.value = INPUT_SEED;
+    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+  }, [setGameState]);
 
   const typeCharacter = useCallback(
     (character) => {
@@ -181,46 +221,55 @@ export default function App() {
       const target = getTypingTarget(stop, typingLanguage);
       const targetCharacters = [...target];
       const expected = targetCharacters[typedIndexRef.current];
+      const stats = statsRef.current;
 
       if (isTypingCharacterMatch(character, expected, typingLanguage)) {
         typedIndexRef.current += 1;
-
-        const newCombo = combo + 1;
-        const newMaxCombo = Math.max(maxCombo, newCombo);
-
-        setGameState({
-          correct: correct + 1,
-          combo: newCombo,
-          maxCombo: newMaxCombo
-        });
+        stats.correct += 1;
+        stats.combo += 1;
+        stats.maxCombo = Math.max(stats.maxCombo, stats.combo);
 
         if (typedIndexRef.current >= targetCharacters.length) {
-          setGameState({ typedIndex: typedIndexRef.current });
           const arrived = runStops[stopIndexRef.current];
-          setGameState({ arrivalStop: arrived });
-          arrivalTimerRef.current = setTimeout(advanceStop, ARRIVAL_POPUP_MS);
+          setGameState({
+            typedIndex: typedIndexRef.current,
+            correct: stats.correct,
+            combo: stats.combo,
+            maxCombo: stats.maxCombo,
+            arrivalStop: arrived,
+          });
+          clearTimeout(arrivalTimerRef.current);
+          clearTimeout(popupTimerRef.current);
+          // 버스는 거의 바로 출발하고, 토스트는 그것과 별개로 조금 더
+          // 떠 있다가 스스로 사라진다.
+          arrivalTimerRef.current = setTimeout(advanceStop, ADVANCE_DELAY_MS);
+          popupTimerRef.current = setTimeout(() => setGameState({ arrivalStop: null }), POPUP_VISIBLE_MS);
         } else {
-          setGameState({ typedIndex: typedIndexRef.current });
+          setGameState({
+            typedIndex: typedIndexRef.current,
+            correct: stats.correct,
+            combo: stats.combo,
+            maxCombo: stats.maxCombo,
+          });
         }
       } else {
-        setGameState({
-          errors: errors + 1,
-          shake: false,
-          combo: 0
-        });
+        stats.errors += 1;
+        stats.combo = 0;
+        setGameState({ errors: stats.errors, shake: false, combo: 0 });
         requestAnimationFrame(() => setGameState({ shake: true }));
         setTimeout(() => setGameState({ shake: false }), 170);
       }
     },
-    [advanceStop, runStops, typingLanguage, correct, errors, combo, maxCombo, setGameState],
+    // correct/errors/combo/maxCombo은 이제 statsRef로만 관리하므로 의존성에서 뺐다.
+    // 이 콜백은 게임 중엔 runStops/typingLanguage가 바뀌지 않는 한 재생성되지 않는다.
+    [advanceStop, runStops, typingLanguage, setGameState],
   );
 
-  // ==================== 개선된 입력 처리 ====================
   const consumeTypingInput = useCallback(
     (input) => {
       const raw = input.value;
 
-      // 백스페이스 감지
+      // 시드 문자가 사라졌다는 건 백스페이스가 눌렸다는 뜻이다.
       if (!raw.startsWith(INPUT_SEED)) {
         input.value = INPUT_SEED;
         setGameState({ compositionText: "" });
@@ -229,16 +278,16 @@ export default function App() {
       }
 
       const value = raw.slice(INPUT_SEED.length);
-      if (!value) {
-        input.value = INPUT_SEED;
-        return;
-      }
-
-      const characters = normalizeCommittedText(value, typingLanguage);
-      input.value = INPUT_SEED;                    // 즉시 초기화
+      input.value = INPUT_SEED;
       setGameState({ compositionText: "" });
+      if (!value) return;
 
-      for (const character of characters) {
+      const committed = normalizeCommittedText(value, typingLanguage);
+
+      for (const character of committed) {
+        // 조합 취소 과정에서 어중간한 자모 하나(예: 'ㄹ')가 그대로 커밋되는
+        // 드문 경우, 오타로 세지 않고 조용히 무시한다.
+        if (typingLanguage === TYPING_LANGUAGES.KOREAN && isIncompleteJamo(character)) continue;
         typeCharacter(character);
       }
     },
@@ -249,9 +298,8 @@ export default function App() {
     (event) => {
       if (isComposingRef.current || event.nativeEvent?.isComposing) {
         const raw = event.currentTarget.value;
-        setGameState({
-          compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw
-        });
+        const liveText = raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw;
+        setGameState({ compositionText: liveText });
         return;
       }
       consumeTypingInput(event.currentTarget);
@@ -262,9 +310,8 @@ export default function App() {
   const handleCompositionStart = useCallback((event) => {
     isComposingRef.current = true;
     const raw = event.currentTarget.value;
-    setGameState({
-      compositionText: raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw
-    });
+    const liveText = raw.startsWith(INPUT_SEED) ? raw.slice(INPUT_SEED.length) : raw;
+    setGameState({ compositionText: liveText });
   }, [setGameState]);
 
   const handleCompositionEnd = useCallback(
@@ -276,22 +323,30 @@ export default function App() {
     [consumeTypingInput, setGameState],
   );
 
-  // ==================== 키보드 이벤트 ====================
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.isComposing || event.keyCode === 229) return;
+      const composing = event.isComposing || event.keyCode === 229 || isComposingRef.current;
+
       if (event.key === "Escape") {
-        if (screen === "game") backToHome();
+        if (screen === "game" && !composing) backToHome();
         return;
       }
       if (screen !== "game") return;
 
       if (event.key === "Backspace") {
+        if (composing) {
+          // 조합 중인 음절을 자모 단위로 지우게 두는 대신, 통째로 취소한다.
+          event.preventDefault();
+          cancelComposition();
+          return;
+        }
         if (event.target === typingInputRef.current) return;
         event.preventDefault();
         deleteCharacter();
         return;
       }
+
+      if (composing) return; // 조합 중인 다른 키 입력은 IME에 맡긴다
 
       if (
         event.target === typingInputRef.current ||
@@ -309,7 +364,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [backToHome, deleteCharacter, screen, typeCharacter]);
+  }, [backToHome, cancelComposition, deleteCharacter, screen, typeCharacter]);
 
   const currentTarget = runStops[stopIndex] ? getTypingTarget(runStops[stopIndex], typingLanguage) : "";
 

@@ -63,3 +63,13 @@ export function isTypingCharacterMatch(typed, expected, language) {
   
   return typed.toLowerCase() === expected.toLowerCase();
 }
+
+// 한글 완성형 음절(가-힣)이 아니라 자음/모음 낱자 하나만 있는 경우를 판별한다.
+// 조합 중이던 음절을 강제로 취소(blur/focus)할 때, 브라우저에 따라 드물게
+// 다 조합되지 못한 낱자(예: 'ㄹ' 하나)가 그대로 커밋되어버릴 수 있는데,
+// 이런 값은 오타로 세지 않고 조용히 무시하기 위한 안전장치다.
+const HANGUL_JAMO_ONLY = /^[\u3131-\u318E]$/;
+
+export function isIncompleteJamo(character) {
+  return HANGUL_JAMO_ONLY.test(character);
+}

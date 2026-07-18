@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { getStopsViewBox, pointOnArc, segmentPath, flowBow, TRAVEL_MODES } from "../lib/geo";
 
+const TRAVEL_DURATION_MS = 420;
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -50,6 +52,48 @@ function useSmoothViewBox(target, reduced) {
   }, [reduced, ...target]);
 
   return box;
+}
+
+// 메트로타이핑 스타일 이동: 타이핑 진행률(글자 수)과 버스/비행기 위치를
+// 완전히 분리한다. 타이핑하는 동안엔 버스가 현재 정류장에 가만히 서 있다가,
+// 정류장 이름을 다 쳐서 stopIndex가 실제로 넘어가는 그 순간에만 이전
+// 정류장 -> 새 정류장으로 한 번에 이동 애니메이션이 재생된다.
+//
+// (예전엔 타이핑 중 글자 수 비율(journeyProgress)에 버스 위치를 실시간으로
+// 묶어뒀는데, 한글 조합 중 "선반영했다가 되돌리는" 과정에서 진행률이
+// 순간적으로 오르락내리락하면 버스도 그대로 앞으로 갔다 뒤로 갔다 하는
+// 것처럼 보이는 문제가 있었다. 타이핑 진행 상황과 지도 이동을 아예 분리해서
+// 이 문제 자체가 발생할 수 없게 만들었다.)
+function useVehicleTravel(stopIndex, reduced) {
+  const [t, setT] = useState(1); // 1 = 도착해서 정차 중, 0 = 막 출발
+  const prevIndexRef = useRef(stopIndex);
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    const prevIndex = prevIndexRef.current;
+    prevIndexRef.current = stopIndex;
+
+    // 최초 마운트거나 정류장이 실제로 안 바뀐 경우엔 애니메이션 없이 정차 상태 유지
+    if (prevIndex === stopIndex) return undefined;
+
+    if (reduced) {
+      setT(1);
+      return undefined;
+    }
+
+    setT(0);
+    const start = performance.now();
+    const step = (now) => {
+      const progress = Math.min(1, (now - start) / TRAVEL_DURATION_MS);
+      const eased = 1 - (1 - progress) ** 3; // ease-out
+      setT(eased);
+      if (progress < 1) frameRef.current = requestAnimationFrame(step);
+    };
+    frameRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameRef.current);
+  }, [stopIndex, reduced]);
+
+  return t;
 }
 
 // Simple label collision avoidance: shift labels that overlap
@@ -114,29 +158,42 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
   );
 });
 
-export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake }) {
+function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
   const reducedMotion = usePrefersReducedMotion();
   const nextIndex = stopIndex + 1 < stops.length ? stopIndex + 1 : null;
   const current = stops[stopIndex];
   const next = nextIndex === null ? null : stops[nextIndex];
+  const prevStop = stopIndex > 0 ? stops[stopIndex - 1] : null;
 
-  // Zoom camera to current segment instead of whole country
-  const targetBox = getStopsViewBox([current, next].filter(Boolean), 90, 260);
+  const travelT = useVehicleTravel(stopIndex, reducedMotion);
+  const isTraveling = Boolean(prevStop) && travelT < 1;
+
+  // 이동 중일 땐 "출발지 -> 도착지" 두 정류장이 함께 보이도록, 정차 중일 땐
+  // "현재 -> 다음" 두 정류장이 보이도록 카메라를 맞춘다 (다음 타이핑
+  // 목적지를 미리 보여주면서도, 이동하는 순간엔 버스를 따라가는 느낌을 준다).
+  const framingStops = isTraveling ? [prevStop, current] : [current, next];
+  const targetBox = getStopsViewBox(framingStops.filter(Boolean), 90, 260);
   const viewBox = useSmoothViewBox(targetBox, reducedMotion).join(" ");
-  const isFlight = next?.mode === TRAVEL_MODES.PLANE;
-  const bow = next ? flowBow(next.mode, stopIndex) : 0;
-  const vehiclePoint = next ? pointOnArc(current.point, next.point, journeyProgress, bow) : current.point;
-  const angleReference = next
-    ? (journeyProgress > 0.98
-      ? pointOnArc(current.point, next.point, journeyProgress - 0.02, bow)
-      : pointOnArc(current.point, next.point, journeyProgress + 0.02, bow))
-    : current.point;
 
-  const vehicleAngle = next
-    ? journeyProgress > 0.98
-      ? (Math.atan2(vehiclePoint[1] - angleReference[1], vehiclePoint[0] - angleReference[0]) * 180) / Math.PI
-      : (Math.atan2(angleReference[1] - vehiclePoint[1], angleReference[0] - vehiclePoint[0]) * 180) / Math.PI
-    : 0;
+  const isFlight = isTraveling
+    ? current.mode === TRAVEL_MODES.PLANE
+    : next?.mode === TRAVEL_MODES.PLANE;
+
+  const bow = isTraveling ? flowBow(current.mode, stopIndex - 1) : 0;
+  const vehiclePoint = isTraveling ? pointOnArc(prevStop.point, current.point, travelT, bow) : current.point;
+
+  // 정차 중엔 마지막으로 이동하던 방향을 그대로 유지한다 (매번 0도로
+  // 리셋되면 정차할 때마다 기체가 홱 돌아가 보인다).
+  const lastAngleRef = useRef(0);
+  if (isTraveling) {
+    const lookahead = travelT > 0.98
+      ? pointOnArc(prevStop.point, current.point, Math.max(travelT - 0.02, 0), bow)
+      : pointOnArc(prevStop.point, current.point, Math.min(travelT + 0.02, 1), bow);
+    lastAngleRef.current = travelT > 0.98
+      ? (Math.atan2(vehiclePoint[1] - lookahead[1], vehiclePoint[0] - lookahead[0]) * 180) / Math.PI
+      : (Math.atan2(lookahead[1] - vehiclePoint[1], lookahead[0] - vehiclePoint[0]) * 180) / Math.PI;
+  }
+  const vehicleAngle = lastAngleRef.current;
 
   const labels = useMemo(() => resolveLabels(stops), [stops]);
 
@@ -181,8 +238,8 @@ export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake 
         );
       })}
 
-      {/* Active segment */}
-      {next ? (
+      {/* Active segment (다음으로 탈 구간을 은은하게 미리 강조) */}
+      {!isTraveling && next ? (
         <path
           className={`route-line is-active ${isFlight ? "is-flight" : "is-bus"}`}
           d={segmentPath(current, next, next.mode, stopIndex).d}
@@ -196,8 +253,10 @@ export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake 
         const label = labels[index];
         return (
           <g key={stop.id} className={`map-stop ${state}`} transform={`translate(${stop.point[0]},${stop.point[1]})`}>
-            {/* Halo for current stop */}
-            {state === "is-current" ? <circle r="18" className="stop-halo" /> : null}
+            {/* Halo for current stop (도착 순간엔 조금 더 크고 진하게 펄스) */}
+            {state === "is-current" ? (
+              <circle r="18" className={`stop-halo ${arrivalStop ? "is-arrived" : ""}`} />
+            ) : null}
 
             {/* Stop marker */}
             {index < stopIndex ? (
@@ -231,11 +290,11 @@ export function TravelMap({ countries, stops, stopIndex, journeyProgress, shake 
       <g
         className={`vehicle-wrapper ${shake ? "is-error" : ""}`}
         transform={`translate(${vehiclePoint[0]},${vehiclePoint[1]}) rotate(${vehicleAngle})`}
-        style={{ transition: reducedMotion ? "none" : "transform 0.15s ease-out" }}
+        style={{ transition: reducedMotion ? "none" : "transform 0.1s linear" }}
         filter="url(#vehicleShadow)"
       >
         <g className={`map-vehicle ${isFlight ? "is-flight" : "is-bus"}`}>
-          {isFlight ? <PlaneIcon progress={journeyProgress} reduced={reducedMotion} /> : <BusIcon progress={journeyProgress} reduced={reducedMotion} />}
+          {isFlight ? <PlaneIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} /> : <BusIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />}
         </g>
       </g>
     </svg>
@@ -253,8 +312,9 @@ function Wheel({ x }) {
   );
 }
 
-function BusIcon({ progress, reduced }) {
-  const wheelRot = reduced ? 0 : progress * 360 * 6; // 6 full rotations per segment
+function BusIcon({ progress, moving, reduced }) {
+  // 이동 중일 때만 바퀴가 구른다 - 정차 중엔 멈춰 있는 게 자연스럽다.
+  const wheelRot = reduced || !moving ? 0 : progress * 360 * 6;
   return (
     <g className="vehicle-icon bus-icon" transform="scale(0.65)">
       {/* Shadow oval */}
@@ -288,9 +348,9 @@ function BusIcon({ progress, reduced }) {
   );
 }
 
-function PlaneIcon({ progress, reduced }) {
-  // Gentle bobbing effect based on progress (sine wave)
-  const hoverY = reduced ? 0 : Math.sin(progress * Math.PI * 4) * 2;
+function PlaneIcon({ progress, moving, reduced }) {
+  // 이동 중일 때만 위아래로 살짝 흔들린다 - 정차(활주로에 선 상태) 중엔 고정.
+  const hoverY = reduced || !moving ? 0 : Math.sin(progress * Math.PI * 4) * 2;
   return (
     <g className="vehicle-icon plane-icon" transform={`scale(0.65) translate(0, ${hoverY})`}>
       {/* Shadow */}
@@ -316,3 +376,9 @@ function PlaneIcon({ progress, reduced }) {
     </g>
   );
 }
+
+// stops/countries가 안정적인 참조를 유지하는 한, stopIndex/shake/arrivalStop이
+// 실제로 바뀔 때만 재렌더된다. 이제 타이핑 진행률(journeyProgress)을 아예
+// prop으로 받지 않기 때문에, 한 글자 칠 때마다 지도가 다시 계산될 일도
+// 없어졌다 - 정류장 도착(stopIndex 변경) 시에만 움직인다.
+export const TravelMap = React.memo(TravelMapImpl);

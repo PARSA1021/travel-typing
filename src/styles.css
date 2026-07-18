@@ -706,10 +706,16 @@ footer {
 
 .stop-halo {
   fill: none;
-  stroke: #10B981;
+  stroke: var(--country-accent, #10B981);
   stroke-width: 2.5;
   opacity: 0.55;
   animation: pulse 1.5s ease-out infinite;
+}
+
+.stop-halo.is-arrived {
+  stroke: var(--country-accent, #10B981);
+  stroke-width: 3.5;
+  animation: pulse-arrive 0.6s ease-out 2;
 }
 
 @keyframes pulse {
@@ -720,6 +726,18 @@ footer {
 
   to {
     r: 24;
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-arrive {
+  from {
+    r: 10;
+    opacity: 0.9;
+  }
+
+  to {
+    r: 34;
     opacity: 0;
   }
 }
@@ -779,41 +797,33 @@ footer {
     transform: translateX(2px) rotate(1deg);
   }
 }
+
 /* ---------- Country accent theme ----------
    현재 머무르고 있는 나라에 따라 하단 타이핑 알약(bottom-pill-container),
    입력 중인 글자 색, 도착 토스트의 색이 함께 바뀐다.
    HomeScreen의 COUNTRY_COLORS 그라디언트와 같은 팔레트를 사용해 통일감을 준다. */
 .game-screen-fullscreen.country-france {
-  --country-accent: #3B82F6;           /* 프랑스 블루 */
-  --country-accent-dark: #1E40AF;
-  --country-accent-light: #60A5FA;
-  --country-accent-glow: rgba(59, 130, 246, 0.35);
-  --country-accent-ring: rgba(59, 130, 246, 0.20);
+  --country-accent: #3B82F6;
+  --country-accent-dark: #2563EB;
+  --country-accent-glow: rgba(59, 130, 246, 0.28);
 }
 
 .game-screen-fullscreen.country-switzerland {
-  --country-accent: #E11D48;           /* 스위스 국기 레드 (자연/정밀함 강조) */
-  --country-accent-dark: #9F1239;
-  --country-accent-light: #FB7185;
-  --country-accent-glow: rgba(225, 29, 72, 0.35);
-  --country-accent-ring: rgba(225, 29, 72, 0.20);
+  --country-accent: #10B981;
+  --country-accent-dark: #059669;
+  --country-accent-glow: rgba(16, 185, 129, 0.28);
 }
 
 .game-screen-fullscreen.country-italy {
-  --country-accent: #10B981;           /* 이탈리아 그린 (기존 유지 + 보정) */
-  --country-accent-dark: #047857;
-  --country-accent-light: #34D399;
-  --country-accent-glow: rgba(16, 185, 129, 0.35);
-  --country-accent-ring: rgba(16, 185, 129, 0.20);
+  --country-accent: #EF4444;
+  --country-accent-dark: #DC2626;
+  --country-accent-glow: rgba(239, 68, 68, 0.28);
 }
 
-/* Default */
 .game-screen-fullscreen.country-default {
-  --country-accent: #14B8A6;
-  --country-accent-dark: #0F766E;
-  --country-accent-light: #5EEAD4;
-  --country-accent-glow: rgba(20, 184, 166, 0.32);
-  --country-accent-ring: rgba(20, 184, 166, 0.18);
+  --country-accent: var(--teal);
+  --country-accent-dark: #059669;
+  --country-accent-glow: rgba(16, 185, 129, 0.28);
 }
 
 /* ---------- GameScreen Fullscreen UI ---------- */
@@ -1237,6 +1247,22 @@ footer {
   border-bottom: 3px dashed #9CA3AF;
 }
 
+/* 조합 중(아직 확정 전)인 글자 - 확정된 것과 헷갈리지 않도록 은은하게
+   숨쉬는 느낌만 주고, 색은 current와 동일하게 유지한다. */
+.typing-target-modern span.is-composing {
+  animation: composing-breathe 0.9s ease-in-out infinite;
+}
+
+@keyframes composing-breathe {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.62;
+  }
+}
+
 .typing-target-modern span.hint-hidden {
   color: #E5E7EB;
   letter-spacing: -0.1em;
@@ -1478,6 +1504,10 @@ body.dark .route-line {
   .stop-halo {
     animation: none;
     display: none;
+  }
+
+  .typing-target-modern span.is-composing {
+    animation: none;
   }
 }
 
