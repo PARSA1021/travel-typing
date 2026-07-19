@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
 import { GameScreen } from "./components/GameScreen";
 import { HomeScreen } from "./components/HomeScreen";
 import { ResultScreen } from "./components/ResultScreen";
@@ -150,8 +150,8 @@ export default function App() {
     const finalElapsedMs = timerMode === "timed" ? Math.min(ms, TIMED_MS) : ms;
     setGameState({ elapsedMs: finalElapsedMs });
 
-    // 개인 기록 저장 - 'line' 모드로 특정 코스를 골라 완주했을 때만 해당
-    // 코스를 "완주"로 표시한다 (타임어택 중간에 시간이 끝난 경우 제외).
+    // 개인 기록 저장 - 코스/그랜드투어/자유주행 완주 판정은 stats.js가
+    // gameType과 timerMode를 보고 알아서 처리한다.
     const finalMinutes = Math.max(finalElapsedMs, 2000) / 60000;
     const finalAttempts = statsRef.current.correct + statsRef.current.errors;
     const finalAccuracy = finalAttempts ? Math.round((statsRef.current.correct / finalAttempts) * 100) : 100;
@@ -167,7 +167,8 @@ export default function App() {
       typingLanguage,
       maxCombo: statsRef.current.maxCombo,
       routeId: selectedRouteId,
-      fullyCompletedRoute: gameType === GAME_TYPES.ROUTE && timerMode === "line",
+      gameType,
+      timerMode,
     });
 
     setScreen("result");
@@ -425,6 +426,15 @@ export default function App() {
             <span>MY TRAVEL TYPING</span>
           </button>
           <div className="top-actions">
+            <button
+              className="icon-button"
+              type="button"
+              aria-pressed={soundOn}
+              aria-label={soundOn ? "효과음 끄기" : "효과음 켜기"}
+              onClick={() => setSoundOn(!soundOn)}
+            >
+              {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
+            </button>
             <button
               className="icon-button"
               type="button"
