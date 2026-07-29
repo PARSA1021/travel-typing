@@ -5,6 +5,7 @@ export const MAP_VIEWBOX = [-40, 300, 780, 560];
 
 export const TRAVEL_MODES = {
   START: "start",
+  WALK: "walk",
   BUS: "bus",
   PLANE: "plane",
 };
@@ -41,20 +42,28 @@ export function buildGeoModel(topology) {
   return { countries, projection };
 }
 
-// The arrival mode for a stop is derived purely from whether its country
-// differs from the previous stop's country - this is what lets both single
-// route playback AND the merged Grand Tour automatically alternate between
-// bus (same country) and plane (crossing a border) without hard-coding it
-// per route.
+// Derive travel mode dynamically:
+// - Different country: PLANE (비행기 ✈️)
+// - Same city or close GPS distance (< 0.035 deg / ~3.5km): WALK (도보/뚜벅이 🚶‍♂️)
+// - Same country, further distance: BUS (버스/기차 🚌)
 export function withTravelModes(stops) {
   return stops.map((stop, index) => {
     if (index === 0) return { ...stop, mode: TRAVEL_MODES.START };
     const previous = stops[index - 1];
-    return {
-      ...stop,
-      mode:
-        previous.country === stop.country ? TRAVEL_MODES.BUS : TRAVEL_MODES.PLANE,
-    };
+
+    if (previous.country !== stop.country) {
+      return { ...stop, mode: TRAVEL_MODES.PLANE };
+    }
+
+    const [lng1, lat1] = previous.coordinates;
+    const [lng2, lat2] = stop.coordinates;
+    const dist = Math.hypot(lng2 - lng1, lat2 - lat1);
+
+    if (previous.city === stop.city || dist < 0.035) {
+      return { ...stop, mode: TRAVEL_MODES.WALK };
+    }
+
+    return { ...stop, mode: TRAVEL_MODES.BUS };
   });
 }
 
@@ -94,34 +103,12 @@ export function getFreeRideStops(routes, count = 12) {
 // (or a deterministic fan-out angle if the coordinates are effectively
 // identical). Legs that are already far apart are left untouched, so real
 // city-to-city and country-to-country distances still read as bigger jumps.
-const MIN_STOP_SEPARATION = 100;
+const MIN_STOP_SEPARATION = 55;
 
 function spreadClusteredPoints(stops, minDistance) {
-  // A running "heading" carries the direction of travel from one synthetic
-  // hop to the next. Picking each hop's angle independently (from tiny,
-  // noisy real coordinates, or a big fixed jump for identical ones) made
-  // consecutive stops swing back toward each other - it reads as the
-  // vehicle bouncing in place rather than going somewhere. Instead, each
-  // step nudges the heading gently toward the true direction (when there is
-  // one) and otherwise keeps curving the same way it was already curving,
-  // so the path always flows forward.
-  const MAX_TURN = Math.PI / 5; // 36 degrees per hop, keeps corners gentle
-  const DRIFT_TURN = Math.PI / 9; // 20 degrees, used when no direction signal exists
-  // Real coordinates inside the same city can differ by a fraction of a map
-  // unit - that's GPS-level noise, not a meaningful direction. Letting it
-  // steer the heading was the actual bug: two noisy signals a hop apart
-  // would point in near-opposite directions, and clamped or not, nudging
-  // toward first one then the other read as the vehicle bouncing in place.
-  // Only offsets clearly bigger than that noise floor are trusted as a real
-  // direction hint.
-  const NOISE_FLOOR = 5;
-  // Direction hints must come from the ORIGINAL, unshifted coordinates -
-  // once a point has already been nudged out to minDistance, measuring the
-  // "next" direction from that shifted point against a still-untouched real
-  // point mixes two different scales and produces meaningless deltas (this
-  // was the actual source of the 180-degree flips). The cascade itself -
-  // where each new point is placed - still builds off the previous
-  // (possibly already-shifted) point so the drawn path stays continuous.
+  const MAX_TURN = Math.PI / 5;
+  const DRIFT_TURN = Math.PI / 9;
+  const NOISE_FLOOR = 2;
   const originalPoints = stops.map((stop) => stop.point);
   let heading = 0;
   let headingKnown = false;
@@ -132,9 +119,6 @@ function spreadClusteredPoints(stops, minDistance) {
     const trueDistance = Math.hypot(trueDx, trueDy);
 
     if (trueDistance >= minDistance) {
-      // Real, already-visible hop: adopt its direction so the next
-      // synthetic stretch flows out of it naturally. Its point is left as
-      // the true coordinate - no adjustment needed.
       heading = Math.atan2(trueDy, trueDx);
       headingKnown = true;
       continue;
@@ -146,7 +130,7 @@ function spreadClusteredPoints(stops, minDistance) {
       headingKnown = true;
     } else if (rawAngle !== null) {
       let delta = rawAngle - heading;
-      delta = Math.atan2(Math.sin(delta), Math.cos(delta)); // wrap to [-PI, PI]
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
       delta = Math.max(-MAX_TURN, Math.min(MAX_TURN, delta));
       heading += delta;
     } else {
@@ -163,24 +147,46 @@ function spreadClusteredPoints(stops, minDistance) {
 }
 
 export function projectStops(stops, projection) {
-  const projected = stops.map((stop) => ({
-    ...stop,
-    point: projection(stop.coordinates),
-  }));
+  const projected = stops.map((stop) => {
+    const rawPoint = projection(stop.coordinates);
+    return {
+      ...stop,
+      point: rawPoint,
+      realPoint: rawPoint, // 100% exact true GPS coordinate projection
+    };
+  });
   return spreadClusteredPoints(projected, MIN_STOP_SEPARATION);
 }
 
-export function getStopsViewBox(stops, padding = 70, minSize = 220) {
+export function getStopsViewBox(stops, padding = 60, defaultMinSize = 220) {
   const points = stops.map((stop) => stop.point).filter(Boolean);
   if (!points.length) return MAP_VIEWBOX;
+
   const xs = points.map(([x]) => x);
   const ys = points.map(([, y]) => y);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  const width = Math.max(maxX - minX + padding * 2, minSize);
-  const height = Math.max(maxY - minY + padding * 2, width * 0.62);
+
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  const rawDist = Math.hypot(spanX, spanY);
+
+  // Dynamic adaptive camera zoom:
+  // For small intra-city GPS hops (e.g. within Paris or Florence), zoom camera close (small minSize).
+  // For large cross-country hops (e.g. Paris to Interlaken), expand camera view (large minSize).
+  let adaptiveMinSize = defaultMinSize;
+  if (rawDist < 30) {
+    adaptiveMinSize = Math.max(rawDist * 3.5, 55);
+  } else if (rawDist < 100) {
+    adaptiveMinSize = Math.max(rawDist * 2.2, 110);
+  } else {
+    adaptiveMinSize = Math.max(rawDist * 1.3, defaultMinSize);
+  }
+
+  const width = Math.max(spanX + padding * 1.8, adaptiveMinSize);
+  const height = Math.max(spanY + padding * 1.8, width * 0.62);
   return [(minX + maxX - width) / 2, (minY + maxY - height) / 2, width, height];
 }
 

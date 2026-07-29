@@ -20,20 +20,12 @@ import {
   isIncompleteJamo,
   normalizeCommittedText,
 } from "./lib/typing";
-import { unlockAudio, playCorrectSound, playErrorSound, playArrivalSound } from "./lib/sound";
+import { unlockAudio, playCorrectSound, playErrorSound, playArrivalSound, playComboSound, playDepartureSound } from "./lib/sound";
 import { recordRun } from "./lib/stats";
 
 const TIMED_MS = 30000;
-// 다 타이핑하고 나서 다음 정류장으로 "출발"하기까지의 지연. 방금 친 마지막
-// 글자의 pop 애니메이션이 눈에 들어올 정도로만 아주 짧게 두고, 그 외엔
-// 거의 바로 출발한다.
-const ADVANCE_DELAY_MS = 120;
-// "도착 완료!" 토스트가 화면에 떠 있는 시간. 이동 시작(ADVANCE_DELAY_MS)과는
-// 별개로 흘러가서, 버스가 이미 다음 정류장으로 출발한 뒤에도 토스트는 잠깐
-// 더 떠 있다가 스스로 사라진다.
-const POPUP_VISIBLE_MS = 900;
-
-// 모바일 백스페이스 안정적 감지를 위한 시드 문자
+const ADVANCE_DELAY_MS = 20;
+const POPUP_VISIBLE_MS = 750;
 const INPUT_SEED = "\u200B";
 
 export default function App() {
@@ -46,8 +38,9 @@ export default function App() {
     selectedRouteId, setSelectedRouteId,
     timerMode, setTimerMode,
     typingLanguage, setTypingLanguage,
+    typingTargetMode, setTypingTargetMode,
     dark, setDark,
-    soundOn,
+    soundOn, setSoundOn,
     stopIndex, typedIndex, correct, errors, combo, maxCombo, completed, elapsedMs, shake, compositionText, arrivalStop, runStops,
     setGameState, resetGameState
   } = useGameStore();
@@ -197,6 +190,7 @@ export default function App() {
     const currentIndex = stopIndexRef.current;
 
     setGameState({ completed: completed + 1 });
+    if (soundOn) playDepartureSound();
 
     if (currentIndex >= runStops.length - 1) {
       clearTimeout(popupTimerRef.current);
@@ -207,7 +201,7 @@ export default function App() {
     typedIndexRef.current = 0;
     stopIndexRef.current = nextIndex;
     setGameState({ stopIndex: nextIndex, typedIndex: 0 });
-  }, [finishGame, runStops, completed, setGameState]);
+  }, [finishGame, runStops, completed, setGameState, soundOn]);
 
   // 방금 확정(commit)된 글자를 한 글자 되돌린다.
   const deleteCharacter = useCallback(() => {
@@ -246,7 +240,7 @@ export default function App() {
       if (!gameActiveRef.current || [...character].length !== 1) return;
       const stop = runStops[stopIndexRef.current];
       if (!stop) return;
-      const target = getTypingTarget(stop, typingLanguage);
+      const target = getTypingTarget(stop, typingLanguage, typingTargetMode);
       const targetCharacters = [...target];
       const expected = targetCharacters[typedIndexRef.current];
       const stats = statsRef.current;
@@ -269,8 +263,6 @@ export default function App() {
           if (soundOn) playArrivalSound(); // 마지막 글자는 클릭음 대신 도착음으로
           clearTimeout(arrivalTimerRef.current);
           clearTimeout(popupTimerRef.current);
-          // 버스는 거의 바로 출발하고, 토스트는 그것과 별개로 조금 더
-          // 떠 있다가 스스로 사라진다.
           arrivalTimerRef.current = setTimeout(advanceStop, ADVANCE_DELAY_MS);
           popupTimerRef.current = setTimeout(() => setGameState({ arrivalStop: null }), POPUP_VISIBLE_MS);
         } else {
@@ -280,7 +272,13 @@ export default function App() {
             combo: stats.combo,
             maxCombo: stats.maxCombo,
           });
-          if (soundOn) playCorrectSound();
+          if (soundOn) {
+            if (stats.combo > 0 && stats.combo % 10 === 0) {
+              playComboSound(stats.combo);
+            } else {
+              playCorrectSound();
+            }
+          }
         }
       } else {
         stats.errors += 1;
@@ -291,10 +289,7 @@ export default function App() {
         setTimeout(() => setGameState({ shake: false }), 170);
       }
     },
-    // correct/errors/combo/maxCombo은 이제 statsRef로만 관리하므로 의존성에서 뺐다.
-    // 이 콜백은 게임 중엔 runStops/typingLanguage/soundOn이 바뀌지 않는 한
-    // 재생성되지 않는다.
-    [advanceStop, runStops, typingLanguage, soundOn, setGameState],
+    [advanceStop, runStops, typingLanguage, typingTargetMode, soundOn, setGameState],
   );
 
   const consumeTypingInput = useCallback(
@@ -314,16 +309,14 @@ export default function App() {
       setGameState({ compositionText: "" });
       if (!value) return;
 
-      const committed = normalizeCommittedText(value, typingLanguage);
+      const committed = normalizeCommittedText(value, typingLanguage, typingTargetMode);
 
       for (const character of committed) {
-        // 조합 취소 과정에서 어중간한 자모 하나(예: 'ㄹ')가 그대로 커밋되는
-        // 드문 경우, 오타로 세지 않고 조용히 무시한다.
         if (typingLanguage === TYPING_LANGUAGES.KOREAN && isIncompleteJamo(character)) continue;
         typeCharacter(character);
       }
     },
-    [typeCharacter, deleteCharacter, typingLanguage, setGameState],
+    [typeCharacter, deleteCharacter, typingLanguage, typingTargetMode, setGameState],
   );
 
   const handleTypingInput = useCallback(
@@ -398,7 +391,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [backToHome, cancelComposition, deleteCharacter, screen, typeCharacter]);
 
-  const currentTarget = runStops[stopIndex] ? getTypingTarget(runStops[stopIndex], typingLanguage) : "";
+  const currentTarget = runStops[stopIndex] ? getTypingTarget(runStops[stopIndex], typingLanguage, typingTargetMode) : "";
 
   return (
     <div className="app-shell">

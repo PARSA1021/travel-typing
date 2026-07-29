@@ -3,7 +3,48 @@ export const TYPING_LANGUAGES = {
   KOREAN: "ko",
 };
 
+export const TYPING_MODES = {
+  WORD: "word",
+  SENTENCE: "sentence",
+};
+
 const NON_WORD_CHARACTERS = /[^\p{Letter}\p{Number}]/gu;
+
+// Hangul Jamo constants for decomposition & live matching
+const CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const JUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+const JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+export function decomposeHangulChar(char) {
+  if (!char) return null;
+  const code = char.charCodeAt(0);
+  if (code < 0xAC00 || code > 0xD7A3) {
+    return { cho: char, jung: '', jong: '', raw: char };
+  }
+  const diff = code - 0xAC00;
+  const choIdx = Math.floor(diff / 588);
+  const jungIdx = Math.floor((diff % 588) / 28);
+  const jongIdx = diff % 28;
+  return {
+    cho: CHO[choIdx],
+    jung: JUNG[jungIdx],
+    jong: JONG[jongIdx],
+    raw: char,
+  };
+}
+
+export function isCompositionPartialMatch(compositionText, targetChar) {
+  if (!compositionText || !targetChar) return false;
+  const compDec = decomposeHangulChar(compositionText);
+  const targetDec = decomposeHangulChar(targetChar);
+  if (!compDec || !targetDec) return false;
+
+  // Compare initial consonant
+  if (compDec.cho && compDec.cho === targetDec.cho) {
+    return true;
+  }
+  return false;
+}
 
 // 유연한 오타 매칭을 위한 사전 (외래어 표기 시 흔히 헷갈리는 모음/자음)
 const FLEXIBLE_MATCHES = {
@@ -32,16 +73,22 @@ const FLEXIBLE_MATCHES = {
   '츠': ['추', '처'],
 };
 
-export function getTypingTarget(stop, language) {
+export function getTypingTarget(stop, language, mode = TYPING_MODES.WORD) {
   if (!stop) return "";
+  if (mode === TYPING_MODES.SENTENCE && stop.description) {
+    return stop.description.normalize("NFKC");
+  }
   if (language === TYPING_LANGUAGES.KOREAN) {
     return (stop.name_ko ?? "").normalize("NFKC").replace(NON_WORD_CHARACTERS, "");
   }
   return (stop.name_en ?? "").normalize("NFKC").toLowerCase();
 }
 
-export function normalizeCommittedText(value, language) {
+export function normalizeCommittedText(value, language, mode = TYPING_MODES.WORD) {
   const normalized = value.normalize("NFKC");
+  if (mode === TYPING_MODES.SENTENCE) {
+    return normalized;
+  }
   return language === TYPING_LANGUAGES.KOREAN
     ? normalized.replace(NON_WORD_CHARACTERS, "")
     : normalized;
@@ -65,11 +112,8 @@ export function isTypingCharacterMatch(typed, expected, language) {
 }
 
 // 한글 완성형 음절(가-힣)이 아니라 자음/모음 낱자 하나만 있는 경우를 판별한다.
-// 조합 중이던 음절을 강제로 취소(blur/focus)할 때, 브라우저에 따라 드물게
-// 다 조합되지 못한 낱자(예: 'ㄹ' 하나)가 그대로 커밋되어버릴 수 있는데,
-// 이런 값은 오타로 세지 않고 조용히 무시하기 위한 안전장치다.
 const HANGUL_JAMO_ONLY = /^[\u3131-\u318E]$/;
 
 export function isIncompleteJamo(character) {
   return HANGUL_JAMO_ONLY.test(character);
-}
+}

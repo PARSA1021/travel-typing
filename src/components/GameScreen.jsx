@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb, Volume2, VolumeX, Sparkles, Footprints } from "lucide-react";
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { SplitFlap } from "./SplitFlap";
 import { TRAVEL_MODES } from "../lib/geo";
 import { getCountryAccentClass } from "../lib/Countrytheme.js";
 import { useGameStore } from "../store/useGameStore";
+import { isCompositionPartialMatch, TYPING_MODES } from "../lib/typing";
 
 export function GameScreen({
   countries,
@@ -27,6 +28,8 @@ export function GameScreen({
   const difficulty = useGameStore((state) => state.difficulty);
   const soundOn = useGameStore((state) => state.soundOn);
   const setSoundOn = useGameStore((state) => state.setSoundOn);
+  const typingTargetMode = useGameStore((state) => state.typingTargetMode);
+  
   const stop = stops[stopIndex];
   const next = stops[stopIndex + 1] ?? null;
   const prev = stops[stopIndex - 1] ?? null;
@@ -34,12 +37,18 @@ export function GameScreen({
   const isKorean = typingLanguage === "ko";
   const upcomingMode = next?.mode;
   const countryClass = getCountryAccentClass(stop?.country);
+  const isSentenceMode = typingTargetMode === TYPING_MODES.SENTENCE;
 
-  const fitFontSize = `clamp(1.4rem, ${(400 / (targetCharacters.length * (isKorean ? 1 : 0.62))).toFixed(2)}px, 4.5rem)`;
+  const charCount = targetCharacters.length;
+  const fitFontSize = isSentenceMode
+    ? `clamp(1.0rem, ${(42 / Math.max(charCount, 12)).toFixed(2)}rem, 1.8rem)`
+    : `clamp(1.4rem, ${(400 / (charCount * (isKorean ? 1 : 0.62))).toFixed(2)}px, 4.5rem)`;
 
   const typingInstruction = isKorean
     ? `${stop?.name_ko}를 입력하세요`
     : `${stop?.name_ko}, 영문 지명 ${stop?.name_en}을 입력하세요`;
+
+  const isFeverCombo = metrics.combo >= 10;
 
   return (
     <section className={`game-screen-fullscreen ${countryClass} ${shake ? "error-flash" : ""}`} onClick={onFocusTyping}>
@@ -58,13 +67,18 @@ export function GameScreen({
         <ArrivalPopup stop={arrivalStop} visible={Boolean(arrivalStop)} />
       </div>
 
-      <header className="game-header-floating">
+      <header className="game-header-floating metro-style-header">
         <div className="header-left">
-          <button className="pill-button" type="button" onClick={(e) => { e.stopPropagation(); onBack(); }}>
-            나가기
+          <button
+            className="metro-exit-circle-btn"
+            type="button"
+            title="나가기 (ESC)"
+            onClick={(e) => { e.stopPropagation(); onBack(); }}
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
           </button>
           <button
-            className="mute-toggle"
+            className="mute-toggle-metro"
             type="button"
             aria-pressed={soundOn}
             aria-label={soundOn ? "효과음 끄기" : "효과음 켜기"}
@@ -72,17 +86,13 @@ export function GameScreen({
           >
             {soundOn ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}
           </button>
-          <span className="brand-text">TRAVEL TYPING</span>
         </div>
 
         <div className="header-center">
-          <div className="progress-bar-container">
-            <span>여정 진행 중</span>
-            <div className="progress-track" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={stops.length}>
-              <div className="progress-fill" style={{ width: `${(completed / stops.length) * 100}%` }} />
-            </div>
-            <span><SplitFlap value={completed} /> / {stops.length}</span>
+          <div className="metro-progress-track">
+            <div className="metro-progress-fill" style={{ width: `${(completed / stops.length) * 100}%` }} />
           </div>
+          <span className="metro-progress-counter">{completed} / {stops.length}</span>
         </div>
 
         <div className="header-right">
@@ -90,7 +100,7 @@ export function GameScreen({
             <span>정확도</span>
             <strong><SplitFlap value={metrics.accuracy} />%</strong>
           </div>
-          <div className={`status-pill ${metrics.combo >= 10 ? "is-hot" : ""}`}>
+          <div className={`status-pill ${isFeverCombo ? "is-hot" : ""}`}>
             <span><Flame size={12} aria-hidden="true" /> 콤보</span>
             <strong><SplitFlap value={metrics.combo} /></strong>
           </div>
@@ -101,18 +111,44 @@ export function GameScreen({
         </div>
       </header>
 
+      {/* Metro Right Edge Floating Zoom Control Bar */}
+      <div className="metro-right-control-bar">
+        <button type="button" className="ctrl-btn" title="확대">+</button>
+        <div className="ctrl-slider-track"><div className="ctrl-slider-thumb" /></div>
+        <button type="button" className="ctrl-btn" title="축소">-</button>
+        <span className="ctrl-zoom-label">100%</span>
+      </div>
+
       <div className={`floating-bottom-ui ${shake ? "shake" : ""}`}>
 
-        {/* Helper popup just above the pill */}
-        <div className="helper-popup">
+        {/* Metro Helper Card just above the pill */}
+        <div className="helper-popup metro-helper-card">
           <div className="timer-badge">
-            <span className="timer-label">{mode === "timed" ? "남은 시간" : "운행 시간"}</span>
-            <span className="timer-value"><SplitFlap value={mode === "timed" ? remaining : elapsed} /></span>
+            <span className="timer-label">{mode === "timed" ? "남은 시간" : "운행시간"}</span>
+            <span className="timer-value"><SplitFlap value={mode === "timed" ? remaining : elapsed} />s</span>
           </div>
+          {isFeverCombo && (
+            <div className="combo-fever-badge">
+              <Sparkles size={13} />
+              <span>FEVER {metrics.combo} COMBO!</span>
+            </div>
+          )}
           {next ? (
             <div className="transport-badge">
-              {upcomingMode === TRAVEL_MODES.PLANE ? <Plane size={14} aria-hidden="true" /> : <Bus size={14} aria-hidden="true" />}
-              <span>{upcomingMode === TRAVEL_MODES.PLANE ? "국가 이동 (비행기)" : "시내 이동 (버스)"}</span>
+              {upcomingMode === TRAVEL_MODES.PLANE ? (
+                <Plane size={14} aria-hidden="true" />
+              ) : upcomingMode === TRAVEL_MODES.WALK ? (
+                <Footprints size={14} aria-hidden="true" />
+              ) : (
+                <Bus size={14} aria-hidden="true" />
+              )}
+              <span>
+                {upcomingMode === TRAVEL_MODES.PLANE
+                  ? "국가 이동 (비행기 ✈️)"
+                  : upcomingMode === TRAVEL_MODES.WALK
+                  ? "시내 도보 이동 (걸어서 여행 🚶‍♂️)"
+                  : "도시 이동 (버스 🚌)"}
+              </span>
             </div>
           ) : (
             <div className="transport-badge is-final">
@@ -135,27 +171,24 @@ export function GameScreen({
           <div className="center-section">
             <div className="current-stop-title">
               <h2>{stop?.name_ko}</h2>
-              <p>{stop?.name_en}</p>
+              <p>{stop?.name_en} {isSentenceMode ? "· 여행 이야기" : ""}</p>
             </div>
 
             <div
-              className={`typing-target-modern ${isKorean ? "is-korean" : ""}`}
+              className={`typing-target-modern ${isKorean ? "is-korean" : ""} ${isSentenceMode ? "is-sentence-mode" : ""}`}
               style={{ "--fit-font": fitFontSize }}
               title="백스페이스로 되돌릴 수 있어요"
             >
               {targetCharacters.map((character, index) => {
                 const isTyped = index < typedIndex;
                 const isCurrent = index === typedIndex;
-                // 한글 조합 중엔 이 칸에 완성 여부와 상관없이 지금 조합
-                // 버퍼를 그대로 보여준다. typedIndex는 실제 확정(commit)
-                // 시점에만 움직이므로, 이건 순전히 "지금 뭘 치고 있는지"를
-                // 보여주는 시각적 미리보기일 뿐 카운트에는 영향을 주지 않는다.
                 const isComposingHere = isCurrent && isKorean && Boolean(compositionText);
+                const isPartialMatch = isComposingHere && isCompositionPartialMatch(compositionText, character);
                 const isHidden = difficulty === "advanced" && index > 0 && !isTyped && character !== " ";
 
                 let className = "";
                 if (isTyped) className = "typed particle-pop";
-                else if (isComposingHere) className = "current is-composing";
+                else if (isComposingHere) className = `current is-composing ${isPartialMatch ? "partial-jamo-match" : ""}`;
                 else if (isCurrent) className = "current";
                 else if (isHidden) className = "hint-hidden";
 

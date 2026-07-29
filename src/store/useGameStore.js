@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { TYPING_LANGUAGES } from '../lib/typing';
+import { TYPING_LANGUAGES, TYPING_MODES } from '../lib/typing';
 import { GAME_TYPES } from '../lib/gameTypes';
 
 export const useGameStore = create((set, get) => ({
@@ -18,6 +18,9 @@ export const useGameStore = create((set, get) => ({
 
   typingLanguage: TYPING_LANGUAGES.KOREAN, // Defaulting to Korean (Beginner)
   setTypingLanguage: (typingLanguage) => set({ typingLanguage }),
+
+  typingTargetMode: TYPING_MODES.WORD, // 'word' or 'sentence'
+  setTypingTargetMode: (typingTargetMode) => set({ typingTargetMode }),
 
   difficulty: 'beginner', // beginner, intermediate, advanced
   setDifficulty: (difficulty) => {
