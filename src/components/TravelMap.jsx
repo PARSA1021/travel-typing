@@ -98,7 +98,7 @@ function resolveLabels(stops) {
 
     return {
       x: stop.point[0],
-      y: stop.point[1] - 14,
+      y: stop.point[1] - 7,
       anchor: "middle",
       text: labelText,
     };
@@ -108,8 +108,8 @@ function resolveLabels(stops) {
     for (let j = i + 1; j < labels.length; j++) {
       const dx = labels[j].x - labels[i].x;
       const dy = labels[j].y - labels[i].y;
-      if (Math.abs(dx) < 65 && Math.abs(dy) < 16) {
-        labels[j].y = labels[i].y + 22;
+      if (Math.abs(dx) < 45 && Math.abs(dy) < 10) {
+        labels[j].y = labels[i].y + 12;
       }
     }
   }
@@ -135,7 +135,7 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
       {/* Pastel Vector Land Countries */}
       <g className="map-countries" filter="url(#landShadow)">
         {countries.map((c) => (
-          <path key={c.id} d={c.path} fill="#F4F4EE" stroke="#CBD5E1" strokeWidth="1.2" />
+          <path key={c.id} d={c.path} fill="#F4F4EE" stroke="#CBD5E1" strokeWidth="0.8" />
         ))}
       </g>
 
@@ -149,11 +149,11 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
             className={`route-line ${stop.mode === TRAVEL_MODES.PLANE ? "is-flight" : stop.mode === TRAVEL_MODES.WALK ? "is-walk" : "is-bus"}`}
             d={d}
             stroke={stop.mode === TRAVEL_MODES.PLANE ? "#93C5FD" : stop.mode === TRAVEL_MODES.WALK ? "#FCD34D" : "#A7F3D0"}
-            strokeWidth="6"
+            strokeWidth="3.2"
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
-            opacity="0.6"
+            opacity="0.5"
           />
         );
       })}
@@ -202,7 +202,6 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
       : (Math.atan2(dy, dx) * 180) / Math.PI;
   }
 
-  // Walk icon stays 100% upright (angle = 0)!
   const vehicleAngle = isWalk ? 0 : lastAngleRef.current;
   const isFacingLeft = isFacingLeftRef.current;
 
@@ -234,20 +233,20 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
         </linearGradient>
 
         <filter id="mapGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feGaussianBlur stdDeviation="2" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
         <filter id="landShadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.06" />
+          <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000000" floodOpacity="0.05" />
         </filter>
         <filter id="vehicleShadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor="#000000" floodOpacity="0.22" />
+          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.2" />
         </filter>
         <filter id="stopShadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.12" />
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.1" />
         </filter>
       </defs>
 
@@ -259,9 +258,9 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
         const { d } = segmentPath(from, stop, stop.mode, index);
         const strokeColor =
           stop.mode === TRAVEL_MODES.PLANE
-            ? "#2563EB"
+            ? "#3B82F6"
             : stop.mode === TRAVEL_MODES.WALK
-            ? "#D97706"
+            ? "#F59E0B"
             : "#10B981";
         return (
           <g key={`done-group-${stop.id}`}>
@@ -269,7 +268,7 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
               className="route-line-core"
               d={d}
               stroke={strokeColor}
-              strokeWidth="6"
+              strokeWidth="3.2"
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"
@@ -285,7 +284,8 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
             className="route-line-core"
             d={segmentPath(current, next, next.mode, stopIndex).d}
             stroke={isFlight ? "#3B82F6" : isWalk ? "#F59E0B" : "#10B981"}
-            strokeWidth="6"
+            strokeWidth="3.2"
+            strokeDasharray={isFlight ? "4 4" : isWalk ? "3 3" : "none"}
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
@@ -309,18 +309,18 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
           <g key={stop.id} className={`map-stop ${state}`} transform={`translate(${stop.point[0]},${stop.point[1]})`}>
             {/* Halo for current active station */}
             {state === "is-current" ? (
-              <circle r="16" className={`stop-halo ${arrivalStop ? "is-arrived" : ""}`} fill={themeColor} opacity="0.18" />
+              <circle r="10" className={`stop-halo ${arrivalStop ? "is-arrived" : ""}`} fill={themeColor} opacity="0.2" />
             ) : null}
 
-            {/* Metro Ring Node */}
+            {/* Crisp Metro Ring Node */}
             {index < stopIndex ? (
-              <circle r="5" fill={themeColor} stroke="#FFFFFF" strokeWidth="1.8" />
+              <circle r="2.8" fill={themeColor} stroke="#FFFFFF" strokeWidth="1" />
             ) : state === "is-current" ? (
-              <circle r="7.5" fill="#FFFFFF" stroke={themeColor} strokeWidth="4" />
+              <circle r="4.8" fill="#FFFFFF" stroke={themeColor} strokeWidth="2.4" />
             ) : state === "is-next" ? (
-              <circle r="6" fill="#FFFFFF" stroke={themeColor} strokeWidth="3" />
+              <circle r="3.6" fill="#FFFFFF" stroke={themeColor} strokeWidth="1.8" />
             ) : (
-              <circle r="5" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="2.5" />
+              <circle r="2.8" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="1.4" />
             )}
 
             {/* Metro Station Text Label */}
@@ -336,24 +336,21 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
         );
       })}
 
-      {/* Metro Vehicle Badge Overlay */}
+      {/* Compact Mini Vehicle Overlay */}
       <g
         className={`vehicle-wrapper ${shake ? "is-error" : ""}`}
         transform={`translate(${vehiclePoint[0]},${vehiclePoint[1]}) rotate(${vehicleAngle})`}
         style={{ transition: reducedMotion ? "none" : "transform 0.1s linear" }}
         filter="url(#vehicleShadow)"
       >
-        <g className="vehicle-badge-pill" transform="scale(1.15)">
-          <rect x="-14" y="-14" width="28" height="28" rx="14" fill="#FFFFFF" stroke="#10B981" strokeWidth="2" />
-          <g className={`map-vehicle ${isFlight ? "is-flight" : isWalk ? "is-walk" : "is-bus"}`}>
-            {isFlight ? (
-              <PlaneIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
-            ) : isWalk ? (
-              <WalkIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} isFacingLeft={isFacingLeft} />
-            ) : (
-              <BusIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
-            )}
-          </g>
+        <g className={`map-vehicle ${isFlight ? "is-flight" : isWalk ? "is-walk" : "is-bus"}`}>
+          {isFlight ? (
+            <PlaneIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
+          ) : isWalk ? (
+            <WalkIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} isFacingLeft={isFacingLeft} />
+          ) : (
+            <BusIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
+          )}
         </g>
       </g>
     </svg>
@@ -374,7 +371,7 @@ function BusIcon({ progress, moving, reduced }) {
   const wheelRot = reduced || !moving ? 0 : progress * 360 * 8;
 
   return (
-    <g className="vehicle-icon bus-icon" transform="scale(0.85)">
+    <g className="vehicle-icon bus-icon" transform="scale(0.42)">
       {/* Headlight cone (forward light beam) */}
       <polygon points="15,-6 45,-14 45,14 15,6" fill="rgba(251, 191, 36, 0.22)" filter="blur(1px)" />
 
@@ -431,7 +428,7 @@ function PlaneIcon({ progress, moving, reduced }) {
   const hoverY = reduced || !moving ? 0 : Math.sin(progress * Math.PI * 6) * 2;
 
   return (
-    <g className="vehicle-icon plane-icon" transform={`scale(0.85) translate(0, ${hoverY})`}>
+    <g className="vehicle-icon plane-icon" transform={`scale(0.40) translate(0, ${hoverY})`}>
       {/* Jet Contrail Smoke Trail (비행운) */}
       {moving && (
         <g opacity="0.85">
@@ -490,7 +487,7 @@ function WalkIcon({ progress, moving, reduced, isFacingLeft }) {
   const bounceY = reduced || !moving ? 0 : Math.abs(Math.sin(progress * Math.PI * 14)) * -2.5;
 
   return (
-    <g className="vehicle-icon walk-icon" transform={`scale(${isFacingLeft ? -0.95 : 0.95}, 0.95) translate(0, ${bounceY})`}>
+    <g className="vehicle-icon walk-icon" transform={`scale(${isFacingLeft ? -0.42 : 0.42}, 0.42) translate(0, ${bounceY})`}>
       {/* Footsteps Dust Trail */}
       {moving && !reduced && (
         <g opacity="0.6">
