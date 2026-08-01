@@ -16,6 +16,7 @@ export function ResultScreen({ elapsed, completed, metrics, onBack, onRetry }) {
 
   const stats = [
     { key: "completed", label: "방문한 여행지", value: completed, unit: "곳" },
+    { key: "distance", label: "총 이동 거리", value: metrics.distance || 0, unit: "km" },
     { key: "elapsed", label: "소요 시간", value: elapsed, unit: "초" },
     { key: "speed", label: "타이핑 속도", value: metrics.speed, unit: metrics.speedUnit },
     { key: "accuracy", label: "정확도", value: metrics.accuracy, unit: "%" },

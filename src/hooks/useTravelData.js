@@ -36,7 +36,7 @@ export function useTravelData() {
     const options = { signal: controller.signal };
     Promise.all([
       fetch("/data/travel-routes.json", options).then(checkResponse),
-      fetch("/data/europe.topo.json", options).then(checkResponse),
+      fetch("/data/world-50m.topo.json", options).then(checkResponse),
     ])
       .then(([data, topology]) => {
         if (!data.routes?.length) throw new Error("여행 루트 데이터가 비어 있습니다");

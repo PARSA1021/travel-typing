@@ -119,8 +119,8 @@ function resolveLabels(stops) {
 const MapBackground = React.memo(function MapBackground({ countries, stops }) {
   return (
     <>
-      {/* Metro Soft Sea Background */}
-      <rect x="-2000" y="-2000" width="5000" height="5000" fill="#D4E6F1" />
+      {/* Metro Soft Sea Background - Fully Transparent to reveal Satellite iframe! */}
+      <rect x="-2000" y="-2000" width="5000" height="5000" fill="transparent" />
 
       {/* Grid Graticule */}
       <g className="map-graticule" opacity="0.12">
@@ -135,14 +135,14 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
       {/* Faux Flat Shadow Layer for performance (bypasses SVG filters) */}
       <g className="map-countries-shadow" transform="translate(0, 3)">
         {countries.map((c) => (
-          <path key={`shadow-${c.id}`} d={c.path} fill="rgba(0,0,0,0.06)" />
+          <path key={`shadow-${c.id}`} d={c.path} fill="rgba(0,0,0,0.25)" />
         ))}
       </g>
 
-      {/* Pastel Vector Land Countries */}
+      {/* HUD-Style Vector Land Countries (Transparent over Satellite) */}
       <g className="map-countries">
         {countries.map((c) => (
-          <path key={c.id} d={c.path} fill="#F4F4EE" stroke="#CBD5E1" strokeWidth="0.8" strokeLinejoin="round" />
+          <path key={c.id} d={c.path} fill="rgba(30, 41, 59, 0.45)" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" strokeLinejoin="round" />
         ))}
       </g>
 

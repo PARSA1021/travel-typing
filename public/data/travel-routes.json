@@ -595,6 +595,81 @@
           ]
         }
       ]
+    },
+    {
+      "id": "global-grand-tour",
+      "title": "글로벌 세계 일주",
+      "title_en": "Global Grand Tour",
+      "country": "World",
+      "countryFlag": "🌍",
+      "stops": [
+        {
+          "id": 101,
+          "name_ko": "경복궁",
+          "name_en": "Gyeongbokgung Palace",
+          "description": "조선 왕조의 으뜸 궁궐로, 고즈넉한 아름다움과 장엄한 역사가 숨쉬는 서울의 심장",
+          "country": "South Korea",
+          "city": "Seoul",
+          "type": "궁궐",
+          "rating": 4.8,
+          "coordinates": [126.9770, 37.5796]
+        },
+        {
+          "id": 102,
+          "name_ko": "시부야 스크램블 교차로",
+          "name_en": "Shibuya Crossing",
+          "description": "수많은 인파가 한 번에 교차하며 마법처럼 질서를 유지하는 도쿄의 역동적인 랜드마크",
+          "country": "Japan",
+          "city": "Tokyo",
+          "type": "교차로",
+          "rating": 4.7,
+          "coordinates": [139.7001, 35.6595]
+        },
+        {
+          "id": 103,
+          "name_ko": "시드니 오페라 하우스",
+          "name_en": "Sydney Opera House",
+          "description": "바람을 머금은 하얀 돛 모양으로 세계를 매혹시킨 아름다운 건축의 걸작",
+          "country": "Australia",
+          "city": "Sydney",
+          "type": "공연장",
+          "rating": 4.8,
+          "coordinates": [151.2153, -33.8568]
+        },
+        {
+          "id": 104,
+          "name_ko": "자유의 여신상",
+          "name_en": "Statue of Liberty",
+          "description": "새로운 세계로 향하는 이들에게 바다 너머로 빛을 비춘 자유와 희망의 상징",
+          "country": "United States",
+          "city": "New York",
+          "type": "기념비",
+          "rating": 4.7,
+          "coordinates": [-74.0445, 40.6892]
+        },
+        {
+          "id": 105,
+          "name_ko": "코파카바나 해변",
+          "name_en": "Copacabana Beach",
+          "description": "눈부신 모래사장과 춤과 음악이 끊이지 않는 남미 낭만의 중심지",
+          "country": "Brazil",
+          "city": "Rio de Janeiro",
+          "type": "해변",
+          "rating": 4.6,
+          "coordinates": [-43.1818, -22.9711]
+        },
+        {
+          "id": 106,
+          "name_ko": "빅 벤",
+          "name_en": "Big Ben",
+          "description": "런던의 템스 강변에서 묵묵히 시간을 알리며 영국의 위엄을 상징하는 거대한 시계탑",
+          "country": "United Kingdom",
+          "city": "London",
+          "type": "시계탑",
+          "rating": 4.7,
+          "coordinates": [-0.1246, 51.5007]
+        }
+      ]
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
   getGrandTourStops,
   getRouteStops,
   projectStops,
+  getRealDistanceKm
 } from "./lib/geo";
 import {
   TYPING_LANGUAGES,
@@ -66,6 +67,16 @@ export default function App() {
   const elapsed = Math.floor(elapsedMs / 1000);
   const remaining = Math.max(Math.ceil((TIMED_MS - elapsedMs) / 1000), 0);
   const minutes = Math.max(elapsedMs, 2000) / 60000;
+  
+  const elapsedKm = useMemo(() => {
+    let km = 0;
+    if (!runStops || runStops.length === 0) return 0;
+    for (let i = 1; i <= completed && i < runStops.length; i++) {
+      km += getRealDistanceKm(runStops[i - 1].coordinates, runStops[i].coordinates);
+    }
+    return km;
+  }, [runStops, completed]);
+
   const metrics = {
     speed:
       typingLanguage === TYPING_LANGUAGES.KOREAN
@@ -75,6 +86,7 @@ export default function App() {
     accuracy: attempts ? Math.round((correct / attempts) * 100) : 100,
     combo: combo,
     maxCombo: maxCombo,
+    distance: elapsedKm,
   };
   const showSiteChrome = screen !== "game";
 
@@ -489,6 +501,7 @@ export default function App() {
             metrics={metrics}
             shake={shake}
             arrivalStop={arrivalStop}
+            projection={geoModel?.projection}
             onBack={backToHome}
             onFocusTyping={() => typingInputRef.current?.focus({ preventScroll: true })}
           />

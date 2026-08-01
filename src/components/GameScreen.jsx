@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Bus, Plane, Flame, Lightbulb, Volume2, VolumeX, 
 import { TravelMap } from "./TravelMap";
 import { ArrivalPopup } from "./ArrivalPopup";
 import { SplitFlap } from "./SplitFlap";
-import { TRAVEL_MODES } from "../lib/geo";
+import { TRAVEL_MODES, getRealDistanceKm } from "../lib/geo";
 import { getCountryAccentClass } from "../lib/Countrytheme.js";
 import { useGameStore } from "../store/useGameStore";
 import { isCompositionPartialMatch, TYPING_MODES } from "../lib/typing";
@@ -22,6 +22,7 @@ export function GameScreen({
   metrics,
   shake,
   arrivalStop,
+  projection,
   onBack,
   onFocusTyping,
 }) {
@@ -40,6 +41,10 @@ export function GameScreen({
   const countryClass = getCountryAccentClass(stop?.country);
   const isSentenceMode = typingTargetMode === TYPING_MODES.SENTENCE;
 
+  const legKm = (stop && next && stop.coordinates && next.coordinates) 
+    ? getRealDistanceKm(stop.coordinates, next.coordinates) 
+    : 0;
+
   const charCount = targetCharacters.length;
   const fitFontSize = isSentenceMode
     ? `clamp(1.0rem, ${(42 / Math.max(charCount, 12)).toFixed(2)}rem, 1.8rem)`
@@ -57,6 +62,28 @@ export function GameScreen({
       <p className="screen-reader-status" aria-live="polite" aria-atomic="true">
         현재 위치 {typingInstruction}
       </p>
+
+      {/* 실시간 위성 뷰 (Live Satellite Background) */}
+      {stop?.coordinates && (
+        <iframe
+          key={`sat-${stop.id}`}
+          title={`Satellite View of ${stop.name_ko}`}
+          src={`https://maps.google.com/maps?q=${stop.coordinates[1]},${stop.coordinates[0]}&t=k&z=16&output=embed&disableDefaultUI=true`}
+          frameBorder="0"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            opacity: 0.85,
+            pointerEvents: "none",
+            zIndex: 0,
+            filter: "grayscale(40%) contrast(1.1) brightness(0.65)",
+          }}
+          aria-hidden="true"
+        />
+      )}
 
       <div className="map-layer">
         <TravelMap 
@@ -176,7 +203,7 @@ export function GameScreen({
             
             <div className="current-stop-title">
               <h2>{stop?.name_ko}</h2>
-              <p>{stop?.name_en} {isSentenceMode ? "· 여행 이야기" : ""}</p>
+              <p>{stop?.name_en} {legKm > 0 ? `· 다음 목적지까지 ${legKm.toLocaleString()}km` : ""} {isSentenceMode ? "· 여행 이야기" : ""}</p>
             </div>
 
             <div

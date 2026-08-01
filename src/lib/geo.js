@@ -1,4 +1,4 @@
-import { geoMercator, geoPath } from "d3-geo";
+import { geoMercator, geoPath, geoDistance, geoInterpolate } from "d3-geo";
 import { feature } from "topojson-client";
 
 export const MAP_VIEWBOX = [-40, 300, 780, 560];
@@ -220,17 +220,51 @@ export function pointOnArc([x1, y1], [x2, y2], t, bow = 0.18) {
   ];
 }
 
-// Every leg of the trip - bus or plane - is drawn as a soft curve rather than
-// a hard straight line, so the whole itinerary reads as one continuous,
-// flowing route instead of a rigid connect-the-dots diagram. Plane hops bow
-// more (a "flight arc"); bus hops bow just enough to feel like a road curving
-// around the land rather than cutting through it. The sign alternates by
-// index so consecutive curves don't stack on the same side and cross.
 export function flowBow(mode, index = 0) {
   const side = index % 2 === 0 ? 1 : -1;
   return mode === TRAVEL_MODES.PLANE ? side * 0.25 : 0;
 }
 
-export function segmentPath(from, to, mode, index = 0) {
+/* =========================================================
+   NEW GPS GEODESIC MATH FOR GREAT CIRCLE FLIGHT PATHS 
+   ========================================================= */
+
+// Returns physical kilometer distance across earth surface 
+export function getRealDistanceKm(coord1, coord2) {
+  if (!coord1 || !coord2) return 0;
+  return Math.round(geoDistance(coord1, coord2) * 6371);
+}
+
+// Generate an SVG path mapping true Earth curvature onto our Projection
+export function geodesicPath(coord1, coord2, projection, numSegments = 30) {
+  const interpolate = geoInterpolate(coord1, coord2);
+  let d = "";
+  for (let i = 0; i <= numSegments; i++) {
+    const t = i / numSegments;
+    const [lon, lat] = interpolate(t);
+    const [x, y] = projection([lon, lat]);
+    d += `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)} `;
+  }
+  return { d: d.trim() };
+}
+
+export function pointOnGeodesic(coord1, coord2, t, projection) {
+  const [lon, lat] = geoInterpolate(coord1, coord2)(t);
+  return projection([lon, lat]);
+}
+
+// Universal Router
+export function segmentPath(from, to, mode, index = 0, projection = null) {
+  if (mode === TRAVEL_MODES.PLANE && projection && from?.coordinates && to?.coordinates) {
+    return geodesicPath(from.coordinates, to.coordinates, projection);
+  }
   return arcPath(from.point, to.point, flowBow(mode, index));
+}
+
+// Universal Tracker
+export function getVehiclePoint(from, to, t, mode, index = 0, projection = null) {
+  if (mode === TRAVEL_MODES.PLANE && projection && from?.coordinates && to?.coordinates) {
+    return pointOnGeodesic(from.coordinates, to.coordinates, t, projection);
+  }
+  return pointOnArc(from.point, to.point, t, flowBow(mode, index));
 }
