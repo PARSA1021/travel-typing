@@ -6,7 +6,7 @@ import { Stamp } from "lucide-react";
 // 같은 퇴장 애니메이션을 CSS에서 자유롭게 정의할 수 있다.
 const EXIT_DURATION_MS = 250;
 
-function ArrivalPopupImpl({ stop, visible }) {
+function ArrivalPopupImpl({ stop, visible, isPerfectArrival }) {
   const [mounted, setMounted] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -37,10 +37,14 @@ function ArrivalPopupImpl({ stop, visible }) {
       aria-live="polite"
     >
       {/* 여권 입국 스탬프 느낌 - 정류장 도착마다 "쾅" 찍히는 연출 */}
-      <div className="arrival-stamp">
-        <Stamp size={14} aria-hidden="true" className="stamp-icon" />
-        <span className="stamp-label">ARRIVED</span>
-        <strong className="stamp-city">{stop.name_ko}</strong>
+      <div className={`arrival-toast ${isPerfectArrival ? "is-perfect" : ""}`}>
+        <div className="toast-icon">
+          <Stamp size={20} aria-hidden="true" color="#ffffff" />
+        </div>
+        <div className="toast-content">
+          <span className="toast-subtitle">{isPerfectArrival ? "PERFECT ARRIVAL! ✨" : "ARRIVED"}</span>
+          <strong className="toast-title">{stop.name_ko}</strong>
+        </div>
       </div>
     </div>
   );

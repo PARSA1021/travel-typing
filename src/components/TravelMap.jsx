@@ -132,10 +132,17 @@ const MapBackground = React.memo(function MapBackground({ countries, stops }) {
         ))}
       </g>
 
-      {/* Pastel Vector Land Countries */}
-      <g className="map-countries" filter="url(#landShadow)">
+      {/* Faux Flat Shadow Layer for performance (bypasses SVG filters) */}
+      <g className="map-countries-shadow" transform="translate(0, 3)">
         {countries.map((c) => (
-          <path key={c.id} d={c.path} fill="#F4F4EE" stroke="#CBD5E1" strokeWidth="0.8" />
+          <path key={`shadow-${c.id}`} d={c.path} fill="rgba(0,0,0,0.06)" />
+        ))}
+      </g>
+
+      {/* Pastel Vector Land Countries */}
+      <g className="map-countries">
+        {countries.map((c) => (
+          <path key={c.id} d={c.path} fill="#F4F4EE" stroke="#CBD5E1" strokeWidth="0.8" strokeLinejoin="round" />
         ))}
       </g>
 
@@ -231,23 +238,12 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
           <stop offset="60%" stopColor="rgba(147,197,253,0.4)" />
           <stop offset="100%" stopColor="rgba(255,255,255,0)" />
         </linearGradient>
-
-        <filter id="mapGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id="landShadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000000" floodOpacity="0.05" />
-        </filter>
-        <filter id="vehicleShadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.2" />
-        </filter>
-        <filter id="stopShadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.1" />
-        </filter>
+        
+        <linearGradient id="headlightGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="rgba(253, 230, 138, 0.45)" />
+          <stop offset="10%" stopColor="rgba(253, 230, 138, 0.2)" />
+          <stop offset="100%" stopColor="rgba(253, 230, 138, 0)" />
+        </linearGradient>
       </defs>
 
       <MapBackground countries={countries} stops={stops} />
@@ -306,7 +302,7 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
             : "#10B981";
 
         return (
-          <g key={stop.id} className={`map-stop ${state}`} transform={`translate(${stop.point[0]},${stop.point[1]})`}>
+          <g key={stop.id} className={`map-stop ${state} analog-pin`} transform={`translate(${stop.point[0]},${stop.point[1]})`}>
             {/* Halo for current active station */}
             {state === "is-current" ? (
               <circle r="10" className={`stop-halo ${arrivalStop ? "is-arrived" : ""}`} fill={themeColor} opacity="0.2" />
@@ -341,15 +337,14 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
         className={`vehicle-wrapper ${shake ? "is-error" : ""}`}
         transform={`translate(${vehiclePoint[0]},${vehiclePoint[1]}) rotate(${vehicleAngle})`}
         style={{ transition: reducedMotion ? "none" : "transform 0.1s linear" }}
-        filter="url(#vehicleShadow)"
       >
         <g className={`map-vehicle ${isFlight ? "is-flight" : isWalk ? "is-walk" : "is-bus"}`}>
           {isFlight ? (
-            <PlaneIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
+            <PlaneIcon moving={isTraveling} reduced={reducedMotion} />
           ) : isWalk ? (
-            <WalkIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} isFacingLeft={isFacingLeft} />
+            <WalkIcon moving={isTraveling} reduced={reducedMotion} isFacingLeft={isFacingLeft} />
           ) : (
-            <BusIcon progress={travelT} moving={isTraveling} reduced={reducedMotion} />
+            <BusIcon moving={isTraveling} reduced={reducedMotion} />
           )}
         </g>
       </g>
@@ -357,182 +352,145 @@ function TravelMapImpl({ countries, stops, stopIndex, shake, arrivalStop }) {
   );
 }
 
-function Wheel({ x }) {
+function Wheel({ x, spinClass }) {
   return (
-    <g transform={`translate(${x}, 0)`}>
+    <g transform={`translate(${x}, 0)`} className={spinClass}>
       <circle cx="0" cy="0" r="3.5" fill="#1E293B" />
-      <circle cx="0" cy="0" r="2" fill="#94A3B8" />
-      <circle cx="0" cy="0" r="0.8" fill="#F8FAFC" />
+      <circle cx="0" cy="0" r="2.2" fill="#64748B" />
+      <path d="M 0 -2.2 L 0 2.2 M -2.2 0 L 2.2 0" stroke="#F1F5F9" strokeWidth="1" />
     </g>
   );
 }
 
-function BusIcon({ progress, moving, reduced }) {
-  const wheelRot = reduced || !moving ? 0 : progress * 360 * 8;
-
+function BusIcon({ moving, reduced }) {
+  const isAnimated = moving && !reduced;
   return (
     <g className="vehicle-icon bus-icon" transform="scale(0.42)">
-      {/* Headlight cone (forward light beam) */}
-      <polygon points="15,-6 45,-14 45,14 15,6" fill="rgba(251, 191, 36, 0.22)" filter="blur(1px)" />
-
-      {/* Moving Exhaust Dust Particles */}
-      {moving && !reduced && (
-        <g opacity="0.6">
-          <circle cx="-20" cy="3" r="2" fill="rgba(203, 213, 225, 0.6)">
-            <animate attributeName="cx" values="-18;-34" dur="0.4s" repeatCount="indefinite" />
-            <animate attributeName="r" values="1.5;4" dur="0.4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.6;0" dur="0.4s" repeatCount="indefinite" />
-          </circle>
-        </g>
+      {isAnimated && (
+        <polygon points="20,-6 75,-22 75,22 20,6" fill="url(#headlightGrad)" stroke="none" />
       )}
-
-      {/* Bus Shadow */}
-      <ellipse cx="0" cy="3" rx="17" ry="7" fill="rgba(0,0,0,0.12)" />
-
-      {/* Bus Outer Body */}
-      <rect x="-16" y="-9" width="32" height="18" rx="6" fill="url(#busBodyGrad)" stroke="#047857" strokeWidth="0.8" />
+      <ellipse cx="0" cy="7" rx="22" ry="7" fill="rgba(0,0,0,0.2)" className={isAnimated ? "shadow-pulse" : ""} />
       
-      {/* Roof Shell & Air Conditioner Unit */}
-      <rect x="-14" y="-10" width="26" height="3" rx="1.5" fill="#F8FAFC" opacity="0.9" />
-      <rect x="-4" y="-11" width="8" height="2" rx="1" fill="#94A3B8" />
-
-      {/* Side Windows */}
-      <rect x="-11" y="-7" width="6" height="6" rx="1.5" fill="#E0F2FE" opacity="0.9" />
-      <rect x="-3" y="-7" width="6" height="6" rx="1.5" fill="#E0F2FE" opacity="0.9" />
-      <rect x="5" y="-7" width="6" height="6" rx="1.5" fill="#E0F2FE" opacity="0.9" />
-
-      {/* Panoramic Front Windshield */}
-      <path d="M12,-7 L16,-4 L16,4 L12,7 Z" fill="#93C5FD" opacity="0.95" />
-      <line x1="13" y1="-5" x2="15" y2="3" stroke="#FFFFFF" strokeWidth="1" opacity="0.7" />
-
-      {/* Wheels */}
-      <g transform={`translate(-9, 9.5) rotate(${wheelRot})`}>
-        <Wheel x={0} />
+      <g className={isAnimated ? "bus-body-bounce" : ""}>
+        <path d="M -22 -8 L -22 8 C -22 10 -19 11 -16 11 L 18 11 C 21 11 23 9 23 5 L 23 -3 C 23 -8 19 -10 15 -10 L -18 -10 C -20.5 -10 -22 -9 -22 -8 Z" fill="url(#busBodyGrad)" stroke="#047857" strokeWidth="1" />
+        <path d="M -18 -8 L 15 -8 C 18 -8 20 -6 20 -2 L 20 2 C 20 4 18 5 15 5 L -18 5 C -19.5 5 -19.5 -5 -18 -8 Z" fill="#BAE6FD" opacity="0.9" stroke="#38BDF8" strokeWidth="0.5" />
+        
+        <rect x="-12" y="-8" width="2.5" height="13" fill="#047857" opacity="0.9" />
+        <rect x="-2" y="-8" width="2.5" height="13" fill="#047857" opacity="0.9" />
+        <rect x="8" y="-8" width="2.5" height="13" fill="#047857" opacity="0.9" />
+        
+        <line x1="-21" y1="8" x2="20" y2="8" stroke="#34D399" strokeWidth="1.2" opacity="0.9" />
+        
+        <g transform="translate(-14, 11)">
+          <Wheel x={0} spinClass={isAnimated ? "spin-fast" : ""} />
+        </g>
+        <g transform="translate(12, 11)">
+          <Wheel x={0} spinClass={isAnimated ? "spin-fast" : ""} />
+        </g>
+        
+        <rect x="21" y="-5" width="2.5" height="4" rx="1.2" fill="#FEF08A" />
+        <rect x="21" y="3" width="2.5" height="4" rx="1.2" fill="#FEF08A" />
+        <rect x="-23" y="-6" width="1.5" height="12" rx="0.5" fill="#EF4444" />
       </g>
-      <g transform={`translate(8, 9.5) rotate(${wheelRot})`}>
-        <Wheel x={0} />
-      </g>
-
-      {/* Front LED Headlights */}
-      <circle cx="16" cy="-5" r="1.6" fill="#FBBF24" />
-      <circle cx="16" cy="5" r="1.6" fill="#FBBF24" />
-
-      {/* Rear Taillights */}
-      <rect x="-16.5" y="-6" width="1" height="3" rx="0.5" fill="#EF4444" />
-      <rect x="-16.5" y="3" width="1" height="3" rx="0.5" fill="#EF4444" />
     </g>
   );
 }
 
-function PlaneIcon({ progress, moving, reduced }) {
-  const hoverY = reduced || !moving ? 0 : Math.sin(progress * Math.PI * 6) * 2;
-
+function PlaneIcon({ moving, reduced }) {
+  const isAnimated = moving && !reduced;
   return (
-    <g className="vehicle-icon plane-icon" transform={`scale(0.40) translate(0, ${hoverY})`}>
-      {/* Jet Contrail Smoke Trail (비행운) */}
-      {moving && (
-        <g opacity="0.85">
-          <path d="M-18,-6 Q-32,-7 -50,-8" stroke="url(#contrailGrad)" strokeWidth="3" strokeLinecap="round" fill="none" />
-          <path d="M-18,6 Q-32,7 -50,8" stroke="url(#contrailGrad)" strokeWidth="3" strokeLinecap="round" fill="none" />
+    <g className="vehicle-icon plane-icon">
+      <g className={isAnimated ? "plane-hover" : ""} transform="scale(0.40)">
+        {moving && (
+          <g opacity="0.9">
+            <path d="M-18,-15 L-60,-20" stroke="url(#contrailGrad)" strokeWidth="4" strokeLinecap="round" fill="none" className="contrail-flicker" />
+            <path d="M-18,15 L-60,20" stroke="url(#contrailGrad)" strokeWidth="4" strokeLinecap="round" fill="none" className="contrail-flicker" />
+          </g>
+        )}
+        
+        <ellipse cx="-4" cy="12" rx="28" ry="8" fill="rgba(0,0,0,0.18)" className={isAnimated ? "plane-shadow-pulse" : ""} />
+        
+        <path d="M -10 -4 L -25 -28 L -15 -28 L 8 -4 Z" fill="#60A5FA" stroke="#2563EB" strokeWidth="0.8" strokeLinejoin="round" />
+        <path d="M -10 4 L -25 28 L -15 28 L 8 4 Z" fill="#60A5FA" stroke="#2563EB" strokeWidth="0.8" strokeLinejoin="round" />
+        
+        <path d="M -22 -2 L -32 -14 L -25 -14 L -18 -2 Z" fill="#93C5FD" stroke="#3B82F6" strokeWidth="0.6" strokeLinejoin="round" />
+        <path d="M -22 2 L -32 14 L -25 14 L -18 2 Z" fill="#93C5FD" stroke="#3B82F6" strokeWidth="0.6" strokeLinejoin="round" />
+        <path d="M -20 0 L -30 0 L -32 -8 L -24 0 Z" fill="#1D4ED8" opacity="0.8" />
+
+        <path d="M-28,0 C-28,-6.5 16,-6.5 28,0 C16,6.5 -28,6.5 -28,0 Z" fill="url(#planeBodyGrad)" stroke="#1E40AF" strokeWidth="1" />
+        
+        <path d="M 18,-2.5 C 22,-2.5 25,0 25,0 C 25,0 22,2.5 18,2.5 Z" fill="#F8FAFC" opacity="0.95" />
+        
+        <g fill="rgba(255,255,255,0.9)">
+          <circle cx="10" cy="-2.5" r="0.8" />
+          <circle cx="6" cy="-3.0" r="0.8" />
+          <circle cx="2" cy="-3.2" r="0.8" />
+          <circle cx="-2" cy="-3.3" r="0.8" />
+          <circle cx="-6" cy="-3.3" r="0.8" />
+          <circle cx="-10" cy="-3.1" r="0.8" />
+          
+          <circle cx="10" cy="2.5" r="0.8" />
+          <circle cx="6" cy="3.0" r="0.8" />
+          <circle cx="2" cy="3.2" r="0.8" />
+          <circle cx="-2" cy="3.3" r="0.8" />
+          <circle cx="-6" cy="3.3" r="0.8" />
+          <circle cx="-10" cy="3.1" r="0.8" />
         </g>
-      )}
-
-      {/* Plane Drop Shadow */}
-      <ellipse cx="0" cy="5" rx="19" ry="6" fill="rgba(0,0,0,0.12)" />
-
-      {/* Port Wing (Top) */}
-      <path d="M -3 -3 L -11 -18 L -5 -18 L 6 -3 Z" fill="#60A5FA" stroke="#2563EB" strokeWidth="0.5" />
-      <polygon points="-11,-18 -13,-20 -9,-18" fill="#3B82F6" />
-
-      {/* Starboard Wing (Bottom) */}
-      <path d="M -3 3 L -11 18 L -5 18 L 6 3 Z" fill="#60A5FA" stroke="#2563EB" strokeWidth="0.5" />
-      <polygon points="-11,18 -13,20 -9,18" fill="#3B82F6" />
-
-      {/* Tail Stabilizers */}
-      <path d="M -15 -2 L -20 -9 L -17 -9 L -11 -2 Z" fill="#93C5FD" />
-      <path d="M -15 2 L -20 9 L -17 9 L -11 2 Z" fill="#93C5FD" />
-
-      {/* Fuselage Main Body */}
-      <path d="M-18,0 C-18,-5 12,-5 20,0 C12,5 -18,5 -18,0 Z" fill="url(#planeBodyGrad)" />
-      
-      {/* Cockpit Windshield */}
-      <path d="M15,-2 C18,-2 19,0 19,0 C19,0 18,2 15,2 Z" fill="#F8FAFC" opacity="0.95" />
-
-      {/* Passenger Window Stripe */}
-      <line x1="-8" y1="-2.2" x2="10" y2="-2.2" stroke="rgba(255,255,255,0.7)" strokeWidth="0.8" strokeDasharray="1.5 1" />
-      <line x1="-8" y1="2.2" x2="10" y2="2.2" stroke="rgba(255,255,255,0.7)" strokeWidth="0.8" strokeDasharray="1.5 1" />
-
-      {/* Underwing Jet Engines */}
-      <rect x="-3" y="-9" width="6" height="3" rx="1.5" fill="#1E40AF" />
-      <rect x="-3" y="6" width="6" height="3" rx="1.5" fill="#1E40AF" />
-      
-      {/* Engine Exhaust Glow */}
-      {moving && (
-        <>
-          <circle cx="-3" cy="-7.5" r="1.2" fill="#F59E0B" />
-          <circle cx="-3" cy="7.5" r="1.2" fill="#F59E0B" />
-        </>
-      )}
-
-      {/* Wingtip Navigation Lights (Red on Port, Green on Starboard) */}
-      <circle cx="-11" cy="-18" r="1.5" fill="#EF4444" />
-      <circle cx="-11" cy="18" r="1.5" fill="#22C55E" />
+        
+        <rect x="-14" y="-16" width="12" height="4.5" rx="2.2" fill="#1E40AF" />
+        <rect x="-14" y="11.5" width="12" height="4.5" rx="2.2" fill="#1E40AF" />
+        
+        {moving && (
+          <g>
+            <circle cx="-14" cy="-13.75" r="1.8" fill="#FDE047" className={isAnimated ? "exhaust-flicker" : ""} />
+            <circle cx="-14" cy="13.75" r="1.8" fill="#FDE047" className={isAnimated ? "exhaust-flicker" : ""} />
+          </g>
+        )}
+        
+        <circle cx="-25" cy="-28" r="1.5" fill="#EF4444" className={isAnimated ? "nav-light-blink" : ""} />
+        <circle cx="-25" cy="28" r="1.5" fill="#22C55E" className={isAnimated ? "nav-light-blink" : ""} />
+      </g>
     </g>
   );
 }
 
-function WalkIcon({ progress, moving, reduced, isFacingLeft }) {
-  const legAngle = reduced || !moving ? 0 : Math.sin(progress * Math.PI * 14) * 30;
-  const armAngle = reduced || !moving ? 0 : -Math.sin(progress * Math.PI * 14) * 30;
-  const bounceY = reduced || !moving ? 0 : Math.abs(Math.sin(progress * Math.PI * 14)) * -2.5;
-
+function WalkIcon({ moving, reduced, isFacingLeft }) {
+  const isAnimated = moving && !reduced;
   return (
-    <g className="vehicle-icon walk-icon" transform={`scale(${isFacingLeft ? -0.42 : 0.42}, 0.42) translate(0, ${bounceY})`}>
-      {/* Footsteps Dust Trail */}
-      {moving && !reduced && (
-        <g opacity="0.6">
-          <circle cx="-8" cy="8" r="1.5" fill="#94A3B8">
-            <animate attributeName="cx" values="-6;-16" dur="0.3s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.6;0" dur="0.3s" repeatCount="indefinite" />
-          </circle>
+    <g className="vehicle-icon walk-icon">
+      <g transform={`scale(${isFacingLeft ? -0.44 : 0.44}, 0.44)`}>
+        <g className={isAnimated ? "walk-bounce" : ""}>
+          <ellipse cx="0" cy="11" rx="9" ry="3" fill="rgba(0,0,0,0.2)" className={isAnimated ? "shadow-pulse" : ""} />
+
+          <path d="M -14 -6 L -16 -4 L -16 3 L -12 6 C -12 6 -10 6 -8 5 L -8 -6 Z" fill="#C2410C" stroke="#7C2D12" strokeWidth="0.8" />
+          <rect x="-18" y="-2" width="4" height="4" rx="1" fill="#7C2D12" />
+
+          <path d="M -7 -9 L 7 -9 C 9 -9 9 -5 8 1 L -6 1 Z" fill="#0EA5E9" />
+          
+          <g transform="translate(-2, 1)" className={isAnimated ? "walk-leg-left" : ""}>
+            <path d="M -2 0 L 2 0 L 1 7 L -1 7 Z" fill="#334155" />
+            <path d="M -2 7 L 3 7 Q 4 7 4 9 L -2 9 Z" fill="#78350F" />
+          </g>
+          <g transform="translate(2, 1)" className={isAnimated ? "walk-leg-right" : ""}>
+            <path d="M -2 0 L 2 0 L 1 7 L -1 7 Z" fill="#334155" />
+            <path d="M -2 7 L 3 7 Q 4 7 4 9 L -2 9 Z" fill="#78350F" />
+          </g>
+          
+          <g transform="translate(1, -6)" className={isAnimated ? "walk-arm-left" : ""}>
+            <line x1="0" y1="0" x2="-3" y2="7" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" />
+          </g>
+          
+          <g className={isAnimated ? "head-bob" : ""}>
+            <circle cx="2" cy="-14" r="4" fill="#FDE047" />
+            <path d="M -2 -15 C -2 -19 5 -19 6 -15 L 10 -15 C 10 -15 10 -14 6 -14 L -2 -14 Z" fill="#1D4ED8" />
+          </g>
+          
+          <g transform="translate(3, -6)" className={isAnimated ? "walk-arm-right" : ""}>
+            <line x1="0" y1="0" x2="3" y2="7" stroke="#0369A1" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="3" cy="7" r="1.5" fill="#FDE047" />
+          </g>
         </g>
-      )}
-
-      {/* Traveler Shadow */}
-      <ellipse cx="0" cy="8" rx="8" ry="3" fill="rgba(0,0,0,0.18)" />
-
-      {/* Red Travel Backpack */}
-      <rect x="-9" y="-8" width="5" height="9" rx="2" fill="#EF4444" stroke="#B91C1C" strokeWidth="0.6" />
-
-      {/* Left Leg */}
-      <g transform={`translate(-1, 2) rotate(${-legAngle})`}>
-        <line x1="0" y1="0" x2="0" y2="7" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
-        <circle cx="0.5" cy="7" r="1.2" fill="#3B82F6" />
       </g>
-
-      {/* Right Leg */}
-      <g transform={`translate(1, 2) rotate(${legAngle})`}>
-        <line x1="0" y1="0" x2="0" y2="7" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
-        <circle cx="0.5" cy="7" r="1.2" fill="#3B82F6" />
-      </g>
-
-      {/* Jacket / Torso */}
-      <rect x="-4" y="-7" width="8" height="10" rx="3" fill="#10B981" />
-
-      {/* Left Arm */}
-      <g transform={`translate(-3, -4) rotate(${-armAngle})`}>
-        <line x1="0" y1="0" x2="-3" y2="5" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" />
-      </g>
-
-      {/* Right Arm */}
-      <g transform={`translate(3, -4) rotate(${armAngle})`}>
-        <line x1="0" y1="0" x2="3" y2="5" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" />
-      </g>
-
-      {/* Head & Travel Cap */}
-      <circle cx="0" cy="-11" r="3.5" fill="#FDE047" />
-      <path d="M-5,-13 L5,-13 L3,-16 L-3,-16 Z" fill="#3B82F6" />
-      <line x1="3" y1="-13" x2="7" y2="-13" stroke="#2563EB" strokeWidth="1.2" strokeLinecap="round" />
     </g>
   );
 }

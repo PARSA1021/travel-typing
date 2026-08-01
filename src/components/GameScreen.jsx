@@ -29,6 +29,7 @@ export function GameScreen({
   const soundOn = useGameStore((state) => state.soundOn);
   const setSoundOn = useGameStore((state) => state.setSoundOn);
   const typingTargetMode = useGameStore((state) => state.typingTargetMode);
+  const isPerfectArrival = useGameStore((state) => state.isPerfectArrival);
   
   const stop = stops[stopIndex];
   const next = stops[stopIndex + 1] ?? null;
@@ -49,9 +50,10 @@ export function GameScreen({
     : `${stop?.name_ko}, 영문 지명 ${stop?.name_en}을 입력하세요`;
 
   const isFeverCombo = metrics.combo >= 10;
+  const comboTier = metrics.combo >= 30 ? "tier-diamond" : metrics.combo >= 10 ? "tier-gold" : "tier-normal";
 
   return (
-    <section className={`game-screen-fullscreen ${countryClass} ${shake ? "error-flash" : ""}`} onClick={onFocusTyping}>
+    <section className={`game-screen-fullscreen ${countryClass} ${shake ? "error-glitch" : ""}`} onClick={onFocusTyping}>
       <p className="screen-reader-status" aria-live="polite" aria-atomic="true">
         현재 위치 {typingInstruction}
       </p>
@@ -64,7 +66,7 @@ export function GameScreen({
           shake={shake}
           arrivalStop={arrivalStop} 
         />
-        <ArrivalPopup stop={arrivalStop} visible={Boolean(arrivalStop)} />
+        <ArrivalPopup stop={arrivalStop} visible={Boolean(arrivalStop)} isPerfectArrival={isPerfectArrival} />
       </div>
 
       <header className="game-header-floating metro-style-header">
@@ -99,10 +101,6 @@ export function GameScreen({
           <div className="status-pill">
             <span>정확도</span>
             <strong><SplitFlap value={metrics.accuracy} />%</strong>
-          </div>
-          <div className={`status-pill ${isFeverCombo ? "is-hot" : ""}`}>
-            <span><Flame size={12} aria-hidden="true" /> 콤보</span>
-            <strong><SplitFlap value={metrics.combo} /></strong>
           </div>
           <div className="status-pill">
             <span>속도</span>
@@ -168,7 +166,14 @@ export function GameScreen({
             </div>
           </div>
 
-          <div className="center-section">
+          <div className={`center-section ${comboTier}`}>
+            {metrics.combo > 1 ? (
+              <div className="combo-center-display" key={`combo-${metrics.combo}`}>
+                <span className="combo-value">{metrics.combo}</span>
+                <span className="combo-label">COMBO</span>
+              </div>
+            ) : null}
+            
             <div className="current-stop-title">
               <h2>{stop?.name_ko}</h2>
               <p>{stop?.name_en} {isSentenceMode ? "· 여행 이야기" : ""}</p>

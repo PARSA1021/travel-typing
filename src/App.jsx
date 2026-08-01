@@ -60,7 +60,7 @@ export default function App() {
   // removeEventListener→addEventListener를 반복하게 된다. typedIndexRef와
   // 같은 방식으로 ref에 최신값을 들고 있다가 store에는 한 번에 반영만
   // 하도록 바꿔서, 콜백들이 게임 중엔 재생성되지 않게 만들었다.
-  const statsRef = useRef({ correct: 0, errors: 0, combo: 0, maxCombo: 0 });
+  const statsRef = useRef({ correct: 0, errors: 0, combo: 0, maxCombo: 0, perfects: 0, wordErrors: 0 });
 
   const attempts = correct + errors;
   const elapsed = Math.floor(elapsedMs / 1000);
@@ -118,7 +118,7 @@ export default function App() {
     typingInputRef.current?.focus({ preventScroll: true });
     typedIndexRef.current = 0;
     stopIndexRef.current = 0;
-    statsRef.current = { correct: 0, errors: 0, combo: 0, maxCombo: 0 };
+    statsRef.current = { correct: 0, errors: 0, combo: 0, maxCombo: 0, perfects: 0, wordErrors: 0 };
 
     startTimeRef.current = performance.now();
     setScreen("game");
@@ -200,6 +200,7 @@ export default function App() {
     const nextIndex = currentIndex + 1;
     typedIndexRef.current = 0;
     stopIndexRef.current = nextIndex;
+    statsRef.current.wordErrors = 0;
     setGameState({ stopIndex: nextIndex, typedIndex: 0 });
   }, [finishGame, runStops, completed, setGameState, soundOn]);
 
@@ -212,6 +213,7 @@ export default function App() {
     const stats = statsRef.current;
     stats.correct = Math.max(0, stats.correct - 1);
     stats.combo = 0;
+    stats.wordErrors += 1;
     setGameState({ typedIndex: typedIndexRef.current, correct: stats.correct, combo: 0 });
   }, [setGameState]);
 
@@ -252,19 +254,24 @@ export default function App() {
         stats.maxCombo = Math.max(stats.maxCombo, stats.combo);
 
         if (typedIndexRef.current >= targetCharacters.length) {
+          const isPerfect = stats.wordErrors === 0;
+          if (isPerfect) stats.perfects += 1;
+
           const arrived = runStops[stopIndexRef.current];
           setGameState({
             typedIndex: typedIndexRef.current,
             correct: stats.correct,
             combo: stats.combo,
             maxCombo: stats.maxCombo,
+            perfects: stats.perfects,
             arrivalStop: arrived,
+            isPerfectArrival: isPerfect,
           });
           if (soundOn) playArrivalSound(); // 마지막 글자는 클릭음 대신 도착음으로
           clearTimeout(arrivalTimerRef.current);
           clearTimeout(popupTimerRef.current);
           arrivalTimerRef.current = setTimeout(advanceStop, ADVANCE_DELAY_MS);
-          popupTimerRef.current = setTimeout(() => setGameState({ arrivalStop: null }), POPUP_VISIBLE_MS);
+          popupTimerRef.current = setTimeout(() => setGameState({ arrivalStop: null, isPerfectArrival: false }), POPUP_VISIBLE_MS);
         } else {
           setGameState({
             typedIndex: typedIndexRef.current,
@@ -282,6 +289,7 @@ export default function App() {
         }
       } else {
         stats.errors += 1;
+        stats.wordErrors += 1;
         stats.combo = 0;
         setGameState({ errors: stats.errors, shake: false, combo: 0 });
         if (soundOn) playErrorSound();

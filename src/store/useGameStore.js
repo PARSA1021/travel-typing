@@ -44,11 +44,13 @@ export const useGameStore = create((set, get) => ({
   errors: 0,
   combo: 0,
   maxCombo: 0,
+  perfects: 0,
   completed: 0,
   elapsedMs: 0,
   shake: false,
   compositionText: '',
   arrivalStop: null,
+  isPerfectArrival: false,
   runStops: [],
 
   // Game Actions
@@ -60,11 +62,13 @@ export const useGameStore = create((set, get) => ({
     errors: 0,
     combo: 0,
     maxCombo: 0,
+    perfects: 0,
     completed: 0,
     elapsedMs: 0,
     shake: false,
     compositionText: '',
     arrivalStop: null,
+    isPerfectArrival: false,
     runStops: []
   }),
 }));

@@ -55,19 +55,41 @@ export function ResultScreen({ elapsed, completed, metrics, onBack, onRetry }) {
 }
 
 function ResultStat({ label, value, unit, revealDelay = 0 }) {
-  // 도착 전광판처럼, 화면에 들어오는 순간 0에서 실제 값으로 순서대로
-  // 갈리며 나타난다.
-  const [revealed, setRevealed] = useState(false);
+  const [currentValue, setCurrentValue] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setRevealed(true), 150 + revealDelay);
-    return () => clearTimeout(timer);
-  }, [revealDelay]);
+    let startTime;
+    let animationFrame;
+    const duration = 1200; // 1.2s counting animation
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      // Ease out quartic for a satisfying slowdown
+      const easeOut = 1 - Math.pow(1 - progress, 4);
+      setCurrentValue(Math.floor(easeOut * value));
+      
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        setCurrentValue(value); // ensure final exact value
+      }
+    };
+
+    const timer = setTimeout(() => {
+      animationFrame = requestAnimationFrame(animate);
+    }, 150 + revealDelay);
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [value, revealDelay]);
 
   return (
     <div className="result-stat" role="listitem">
       <small>{label}</small>
-      <strong><SplitFlap value={revealed ? value : 0} /></strong>
+      <strong><SplitFlap value={currentValue} /></strong>
       <span>{unit}</span>
     </div>
   );
